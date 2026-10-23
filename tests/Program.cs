@@ -118,6 +118,27 @@ Check(SaleRules.NativeSaleIndex(new[] { default(SaleMenuRow) }, retainerLabels) 
 Check(SaleRules.NativeSaleIndex(new[] { new SaleMenuRow("Have Retainer Sell Items", true, true, false) }, new[] { "Have Retainer Sell Items" }) == 0, "localized game label supported");
 Console.WriteLine($"Passed {checks} total checks including native sale-menu regression cases.");
 
+var fastPump = new BatchPump();
+var fastProgress = 0;
+var fastCalls = 0;
+fastPump.Run(() => { fastCalls++; if (fastProgress < 3) fastProgress++; }, () => fastProgress);
+Check(fastProgress == 3 && fastCalls == 4, "ready menu quantity and confirmation transitions drain in one call");
+fastCalls = 0;
+fastPump.Run(() => fastCalls++, () => fastProgress);
+Check(fastCalls == 1, "pending acknowledgement yields without spinning or resubmitting");
+fastCalls = 0;
+fastPump.Run(() => { fastCalls++; fastProgress++; }, () => fastProgress);
+Check(fastCalls == BatchPump.MaxSteps, "immediate work is bounded per frame");
+fastCalls = 0;
+fastPump.Run(() => { fastCalls++; fastPump.Run(() => fastCalls++, () => fastProgress); }, () => fastProgress);
+Check(fastCalls == 1, "synchronous addon events cannot reenter sale submission");
+try { fastPump.Run(() => throw new InvalidOperationException("test"), () => fastProgress); }
+catch (InvalidOperationException) { }
+fastCalls = 0;
+fastPump.Run(() => fastCalls++, () => fastProgress);
+Check(fastCalls == 1, "exception releases pump guard for later user action");
+Console.WriteLine($"Passed {checks} total checks including immediate sale scheduling.");
+
 sealed class FakeOverlay
 {
     public bool IsOpen { get; set; }

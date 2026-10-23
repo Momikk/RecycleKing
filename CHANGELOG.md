@@ -2,6 +2,10 @@
 
 [中文更新记录](CHANGELOG.zh-CN.md)
 
+## 0.1.0.5 — 2026-10-23
+
+Speed up batch selling by processing ready menus and quantity confirmations immediately and removing extra per-stack delays to reduce window flicker. Keep inventory and gil checks; wait for game responses. Speed and window behavior remain unverified in-game.
+
 ## 0.1.0.4 — 2026-10-23
 
 Fix retainer recycling stopping at the item menu with a native sale-menu verification error. Locate Have Retainer Sell Items using the game label. Show a specific reason if verification fails. Actual selling still requires in-game verification.

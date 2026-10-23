@@ -19,6 +19,9 @@ namespace RecycleKing;
 internal sealed unsafe class BatchSale : IDisposable
 {
     private static readonly string[] ContextAddons = ["Shop", "InventoryRetainer", "InventoryRetainerLarge"];
+    private static readonly string[] SaleAddons = ["ContextMenu", "InputNumeric", "SelectYesno"];
+    private readonly BatchPump pump = new();
+    private int progress;
     private readonly Plugin plugin;
     private readonly Queue<SaleSlot> queue = [];
     private readonly HashSet<string> confirmations = [];
@@ -27,7 +30,6 @@ internal sealed unsafe class BatchSale : IDisposable
     private SaleSlot current;
     private int phase;
     private bool quantitySent;
-    private long nextTick;
     private long deadline;
     private long totalBefore;
     private ulong gilBefore;
@@ -44,6 +46,8 @@ internal sealed unsafe class BatchSale : IDisposable
         this.plugin = plugin;
         Plugin.Framework.Update += Tick;
         Plugin.Addons.RegisterListener(AddonEvent.PreFinalize, ContextAddons, FinalizeContext);
+        Plugin.Addons.RegisterListener(AddonEvent.PostSetup, SaleAddons, SaleAddonReady);
+        Plugin.Addons.RegisterListener(AddonEvent.PostUpdate, SaleAddons, SaleAddonReady);
     }
 
     internal void Toggle()
@@ -62,15 +66,20 @@ internal sealed unsafe class BatchSale : IDisposable
         soldItems = 0;
         phase = 0;
         deadline = Environment.TickCount64 + 5000;
-        nextTick = 0;
         Status = $"准备回收 {queue.Count} 组物品，再次点击可停止。";
     }
 
-    private void Tick(IFramework framework)
+    private void Tick(IFramework framework) => Pump();
+
+    private void SaleAddonReady(AddonEvent type, AddonArgs args)
     {
-        if (!IsRunning || Environment.TickCount64 < nextTick) return;
-        nextTick = Environment.TickCount64 + 120;
-        try { Advance(); }
+        if (args.AddonName == "ContextMenu" ? phase == 1 : phase == 2) Pump();
+    }
+
+    private void Pump()
+    {
+        if (!IsRunning) return;
+        try { pump.Run(() => { if (IsRunning) Advance(); }, () => progress); }
         catch (Exception error)
         {
             Plugin.Log.Error(error, "回收之王批量出售已停止。");
@@ -104,6 +113,7 @@ internal sealed unsafe class BatchSale : IDisposable
             var agent = AgentInventoryContext.Instance();
             if (bag == null || agent == null) { Stop("背包或物品菜单不可用，已停止。"); return; }
             phase = 1;
+            progress++;
             deadline = now + 5000;
             bagAddonId = bag->Id;
             agent->OpenForItemSlot((InventoryType)((int)InventoryType.Inventory1 + current.Page), current.Slot, 0, bag->Id);
@@ -117,8 +127,13 @@ internal sealed unsafe class BatchSale : IDisposable
             var menu = (AddonContextMenu*)Addon("ContextMenu");
             if (menu == null) return;
             if (!Unchanged(inventory)) { Stop("待出售物品已变化，已停止。"); return; }
-            if (!SelectSell(menu, out var reason)) { Stop($"无法核对原生出售菜单（{reason}），已停止。"); return; }
+            if (!SelectSell(menu, out var reason, out var pending))
+            {
+                if (!pending) Stop($"无法核对原生出售菜单（{reason}），已停止。");
+                return;
+            }
             phase = 2;
+            progress++;
             deadline = now + 15000;
             return;
         }
@@ -126,13 +141,13 @@ internal sealed unsafe class BatchSale : IDisposable
         var handler = Handler(context);
         var gil = Gil(context);
         if (SaleRules.Confirmed(current, totalBefore, Total(inventory), gilBefore, gil)
-            && !HasDialog() && (handler == null || !handler->WaitingForTransactionToFinish))
+            && !HasDialog() && Addon("ContextMenu") == null && (handler == null || !handler->WaitingForTransactionToFinish))
         {
             soldStacks++;
             soldItems += current.Quantity;
             phase = 0;
             deadline = now + 5000;
-            nextTick = now + 350;
+            progress++;
             return;
         }
         if (handler == null || !OwnSale(handler))
@@ -149,6 +164,7 @@ internal sealed unsafe class BatchSale : IDisposable
                 || numeric->OkButton == null || !numeric->OkButton->IsEnabled)
             { Stop("出售数量窗口不匹配，已停止。"); return; }
             quantitySent = true;
+            progress++;
             Callback((AtkUnitBase*)numeric, [current.Quantity]);
             return;
         }
@@ -162,12 +178,14 @@ internal sealed unsafe class BatchSale : IDisposable
                 || confirm->YesButton == null || !confirm->YesButton->IsEnabled || confirmations.Count >= 3)
             { Stop("游戏确认窗口无法核对，已停止，请手动处理。"); return; }
             if (!confirmations.Add(prompt)) return;
+            progress++;
             Callback((AtkUnitBase*)confirm, [0]);
         }
     }
 
-    private bool SelectSell(AddonContextMenu* menu, out string reason)
+    private bool SelectSell(AddonContextMenu* menu, out string reason, out bool pending)
     {
+        pending = false;
         reason = "物品菜单来源不匹配";
         var agent = AgentInventoryContext.Instance();
         if (agent == null || agent->OwnerAddonId != bagAddonId
@@ -196,13 +214,14 @@ internal sealed unsafe class BatchSale : IDisposable
         var rows = new SaleMenuRow[count];
         var nativeList = menu->GetComponentListById(2);
         reason = "菜单列表尚未就绪";
-        if (nativeList == null) return false;
+        if (nativeList == null) { pending = true; return false; }
         for (var i = 0; i < count; i++)
         {
             var value = menu->AtkValues[8 + i];
             if (value.Type is not (AtkValueType.String or AtkValueType.ManagedString or AtkValueType.ConstString)) continue;
             var text = value.String.AsDalamudSeString();
             var renderer = nativeList->GetItemRenderer(i);
+            if (renderer == null) { pending = true; return false; }
             rows[i] = new(text.TextValue, text.Payloads.Count == 1 && text.Payloads[0] is TextPayload,
                 renderer != null && renderer->IsEnabled, (menu->AtkValues[3].UInt & (1u << i)) != 0);
         }
@@ -353,5 +372,7 @@ internal sealed unsafe class BatchSale : IDisposable
         Stop("插件已关闭，已停止；已提交的出售仍可能完成。");
         Plugin.Framework.Update -= Tick;
         Plugin.Addons.UnregisterListener(AddonEvent.PreFinalize, ContextAddons, FinalizeContext);
+        Plugin.Addons.UnregisterListener(AddonEvent.PostSetup, SaleAddons, SaleAddonReady);
+        Plugin.Addons.UnregisterListener(AddonEvent.PostUpdate, SaleAddons, SaleAddonReady);
     }
 }

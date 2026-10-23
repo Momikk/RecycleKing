@@ -12,5 +12,6 @@
     <Compile Include="../RecycleKing/OverlayVisibilityLease.cs" Link="OverlayVisibilityLease.cs" />
     <Compile Include="../RecycleKing/RecycleAppearance.cs" Link="RecycleAppearance.cs" />
     <Compile Include="../RecycleKing/SaleRules.cs" Link="SaleRules.cs" />
+    <Compile Include="../RecycleKing/BatchPump.cs" Link="BatchPump.cs" />
   </ItemGroup>
 </Project>

@@ -1,6 +1,6 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
   <PropertyGroup>
-    <Version>0.1.0.4</Version>
+    <Version>0.1.0.5</Version>
     <Author>Momikk</Author>
     <Name>回收之王 RecycleKing</Name>
     <RepoUrl>https://github.com/Momikk/RecycleKing</RepoUrl>
@@ -12,7 +12,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <CanUnloadAsync>true</CanUnloadAsync>
-    <Changelog>版本 0.1.0.4&#10;· 修复雇员回收停在右键菜单并提示“无法核对原生出售菜单”的问题，按游戏原生“委托雇员出售物品”定位出售项。核对失败时显示具体原因。实际出售仍待游戏内验证。&#10;English&#10;· Fix retainer recycling stopping at the item menu with a native sale-menu verification error. Locate Have Retainer Sell Items using the game label. Show a specific reason if verification fails. Actual selling still requires in-game verification.</Changelog>
+    <Changelog>版本 0.1.0.5&#10;· 加快批量出售：立即处理已就绪的菜单和数量确认，移除每组额外等待，减少窗口闪烁。保留库存与金币核对；游戏响应较慢时仍会等待。新版速度和窗口表现尚未实机验证。&#10;English&#10;· Speed up batch selling by processing ready menus and quantity confirmations immediately and removing extra per-stack delays to reduce window flicker. Keep inventory and gil checks; wait for game responses. Speed and window behavior remain unverified in-game.</Changelog>
     <PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
   </PropertyGroup>
   <ItemGroup>
