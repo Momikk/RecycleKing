@@ -1,6 +1,6 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
   <PropertyGroup>
-    <Version>0.1.0.2</Version>
+    <Version>0.1.0.3</Version>
     <Author>Momikk</Author>
     <Name>回收之王 RecycleKing</Name>
     <RepoUrl>https://github.com/Momikk/RecycleKing</RepoUrl>
@@ -12,7 +12,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <CanUnloadAsync>true</CanUnloadAsync>
-    <Changelog>版本 0.1.0.2&#10;· 背包按钮改为“废品回收”，仅在可出售时显示，点击批量出售普通背包中的清单物品，包含 HQ 和整组数量；再次点击停止。&#10;· 原清单界面通过插件设置或 /rking 打开，出售后保留清单。&#10;· 窗口、物品或交易状态变化及无法核对的确认窗口会停止；已提交的出售仍可能完成。出售流程尚未实机验证。&#10;English&#10;· Show the bag recycling button only when selling is available; sell listed normal-bag items, including HQ and full stacks. Click again to stop.&#10;· Open the list through plugin settings or /rking; keep entries after sales.&#10;· Stop on context/item changes or unrecognized confirmations; submitted sales may still complete. Selling remains unverified in-game.</Changelog>
+    <Changelog>版本 0.1.0.3&#10;· 修复雇员主菜单下不显示“废品回收”的问题，无需先打开雇员库存；使用“委托雇员出售物品”出售清单物品。关闭或切换雇员后停止回收。雇员出售流程尚未实机验证。&#10;English&#10;· Show recycling during an active retainer interaction without opening retainer inventory. Sell listed items through Have Retainer Sell Items. Stop when dismissing or switching retainers. Retainer selling remains unverified in-game.</Changelog>
     <PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
   </PropertyGroup>
   <ItemGroup>

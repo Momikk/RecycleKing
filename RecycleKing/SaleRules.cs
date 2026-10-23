@@ -5,6 +5,11 @@ internal readonly record struct SaleContext(byte Kind, nint Agent, nint Addon, u
 
 internal static class SaleRules
 {
+    internal static bool RetainerAvailable(bool agentActive, ulong liveId, ulong selectedId)
+        => agentActive && liveId != 0 && liveId == selectedId;
+
+    internal static bool RetainerSellAction(ulong callback) => callback == 5;
+
     internal const ulong GilCap = 999_999_999;
 
     internal static bool Eligible(uint id, int quantity, uint price, bool symbolic, IReadOnlySet<uint> list)

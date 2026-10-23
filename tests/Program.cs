@@ -90,6 +90,15 @@ Check(saleContext != saleContext with { Retainer = 7 } && saleContext != saleCon
     && saleContext != saleContext with { AddonId = 7 } && saleContext != saleContext with { Territory = 7 }, "context changes break batch ownership");
 Console.WriteLine($"Passed {checks} total checks including batch-sale guards.");
 
+Check(SaleRules.RetainerAvailable(true, 42, 42), "live retainer supports sales without inventory panel");
+Check(!SaleRules.RetainerAvailable(true, 0, 42), "historical retainer does not enable sales");
+Check(!SaleRules.RetainerAvailable(false, 42, 42), "inactive retainer cannot sell");
+Check(!SaleRules.RetainerAvailable(true, 42, 43), "mismatched retainer cannot sell");
+Check(SaleRules.RetainerSellAction(5), "native retainer sale accepted");
+Check(!SaleRules.RetainerSellAction(2), "market listing rejected");
+Check(!SaleRules.RetainerSellAction(0) && !SaleRules.RetainerSellAction(1) && !SaleRules.RetainerSellAction(3) && !SaleRules.RetainerSellAction(4), "storage actions rejected");
+Console.WriteLine($"Passed {checks} total checks including live-retainer availability.");
+
 sealed class FakeOverlay
 {
     public bool IsOpen { get; set; }

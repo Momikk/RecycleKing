@@ -2,6 +2,10 @@
 
 [中文更新记录](CHANGELOG.zh-CN.md)
 
+## 0.1.0.3 — 2026-10-23
+
+Show recycling during an active retainer interaction without opening retainer inventory. Sell listed items through Have Retainer Sell Items. Stop when dismissing or switching retainers. Retainer selling remains unverified in-game.
+
 ## 0.1.0.2 — 2026-10-23
 
 Show the bag recycling button only when selling is available; sell listed normal-bag items, including HQ and full stacks. Click again to stop. Open the list through plugin settings or /rking; keep entries after sales. Stop on context/item changes or unrecognized confirmations; submitted sales may still complete. Selling remains unverified in-game.

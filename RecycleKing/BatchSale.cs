@@ -9,6 +9,7 @@ using FFXIVClientStructs.FFXIV.Client.Game.Event;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
+using GameFramework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework;
 using Item = Lumina.Excel.Sheets.Item;
 
 namespace RecycleKing;
@@ -179,7 +180,7 @@ internal sealed unsafe class BatchSale : IDisposable
         for (var i = 0; i < Math.Min(count, agent->ContextItemCount); i++)
         {
             var info = agent->ContextCallbackInfos[i];
-            if (info.Handler != receiver || agent->IsContextItemDisabled(i) || (retainer != null && info.CallbackParam != 5)) continue;
+            if (info.Handler != receiver || agent->IsContextItemDisabled(i) || (retainer != null && !SaleRules.RetainerSellAction(info.CallbackParam))) continue;
             if (match >= 0) return false;
             match = i;
         }
@@ -242,7 +243,10 @@ internal sealed unsafe class BatchSale : IDisposable
         var shop = Addon("Shop");
         var retainerBag = Addon("InventoryRetainerLarge");
         if (retainerBag == null) retainerBag = Addon("InventoryRetainer");
-        if (shop != null && retainerBag != null) return false;
+        var framework = GameFramework.Instance();
+        var order = framework == null || framework->UIModule == null ? null : framework->UIModule->GetItemOrderModule();
+        var activeRetainerId = order == null ? 0UL : order->ActiveRetainerId;
+        if (shop != null && (retainerBag != null || activeRetainerId != 0)) return false;
         if (shop != null)
         {
             var agent = AgentShop.Instance();
@@ -252,13 +256,17 @@ internal sealed unsafe class BatchSale : IDisposable
             value = new(1, (nint)proxy->Handler, (nint)shop, shop->Id, Plugin.Player.ContentId, Plugin.ClientState.TerritoryType, 0);
             return true;
         }
-        if (retainerBag != null)
+        var retainerAgent = AgentRetainer.Instance();
+        var manager = RetainerManager.Instance();
+        var retainer = manager == null ? null : manager->GetActiveRetainer();
+        if (SaleRules.RetainerAvailable(retainerAgent != null && retainerAgent->IsAgentActive(),
+            activeRetainerId, retainer == null ? 0UL : retainer->RetainerId))
         {
-            var agent = AgentRetainer.Instance();
-            var manager = RetainerManager.Instance();
-            if (agent == null || !agent->IsAgentActive() || manager == null || manager->LastSelectedRetainerId == 0) return false;
-            value = new(2, (nint)agent, (nint)retainerBag, retainerBag->Id, Plugin.Player.ContentId,
-                Plugin.ClientState.TerritoryType, manager->LastSelectedRetainerId);
+            // The live retainer interaction already provides Have Retainer Sell Items.
+            // Keep ownership across its main menu and inventory panels; LastSelectedRetainerId
+            // alone survives dismissal and must never make the recycling button available.
+            value = new(2, (nint)retainerAgent, 0, 0, Plugin.Player.ContentId,
+                Plugin.ClientState.TerritoryType, activeRetainerId);
             return true;
         }
         return false;
