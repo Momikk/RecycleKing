@@ -4,7 +4,9 @@
 
 ## 0.1.1.0 — 2026-10-23
 
-Keep the recycling button visible while the retainer selling list is open. Temporarily disable it during manual sales or price editing instead of repeatedly hiding it. Visibility and disabled states remain unverified in-game.
+- Keep recycling visible while the retainer sale list is open.
+- Disable it during manual sales or price editing.
+- UI behavior awaits in-game verification.
 
 ## 0.1.0.5 — 2026-10-23
 
