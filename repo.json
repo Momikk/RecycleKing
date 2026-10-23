@@ -1,10 +1,16 @@
 [
   {
+    "DownloadCount": 0,
+    "LastUpdate": 1792757422,
+    "IsTestingExclusive": false,
+    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/45575871789245b4b3b9cf936eac88cac9bddc7e/dist/RecycleKing-0.1.0.1.zip",
+    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/45575871789245b4b3b9cf936eac88cac9bddc7e/dist/RecycleKing-0.1.0.1.zip",
+    "IsHide": false,
     "Author": "Momikk",
     "Name": "回收之王 RecycleKing",
     "InternalName": "RecycleKing",
-    "AssemblyVersion": "0.1.0.0",
-    "Description": "使用游戏原生 UI 管理回收物品清单。点击背包底部的“回收废品”打开清单，右键物品通过带粉色 K 的“加入回收清单”登记；NQ/HQ 视为同一物品，支持逐项移出和清空。大国防联军“筹备稀有品”列表增加品级列。当前不执行出售、丢弃、分解或交纳操作。可通过 /recycleking 或 /rking 打开。",
+    "AssemblyVersion": "0.1.0.1",
+    "Description": "使用游戏原生 UI 管理回收物品清单，按拼音排序；NQ/HQ 视为同一物品，支持逐项移出和清空。清单内物品在背包中显示粉色遮罩与 X，优先于新版压价之王的蓝框。可隐藏 AutoRetainer 军票悬浮框，筹备稀有品列表显示物品品级。当前不自动处理物品。可通过 /recycleking 或 /rking 打开。",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/Momikk/RecycleKing",
     "Tags": [
@@ -19,13 +25,7 @@
     "LoadPriority": 0,
     "IconUrl": "https://raw.githubusercontent.com/Momikk/RecycleKing/main/images/icon.png",
     "Punchline": "在背包中管理自己的回收物品清单。",
-    "Changelog": "版本 0.1.0.0\n· 增加背包“回收废品”入口和带粉色 K 的右键加入菜单。\n· 清单显示图标、名称，支持移出和清空；HQ/NQ 合并保存。\n· 筹备稀有品列表增加物品品级列。\n· 当前不自动处理或交纳物品，界面仍待游戏内验收。\nEnglish\n· Add a native inventory button and a pink K context-menu entry.\n· List icons and names; remove or clear entries and save HQ/NQ together.\n· Show item levels in the expert delivery list.\n· No automatic item processing or delivery; in-game UI verification is pending.",
-    "AcceptsFeedback": true,
-    "DownloadCount": 0,
-    "LastUpdate": 1792756109,
-    "IsTestingExclusive": false,
-    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/34c3cf2df5c3e877012dc283152c2897ab37d801/dist/RecycleKing-0.1.0.0.zip",
-    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/34c3cf2df5c3e877012dc283152c2897ab37d801/dist/RecycleKing-0.1.0.0.zip",
-    "IsHide": false
+    "Changelog": "版本 0.1.0.1\n· 清单按物品名称拼音排序。\n· 背包清单物品增加粉色遮罩与 X，优先于压价之王 0.1.0.21 的蓝框。\n· 增加隐藏 AutoRetainer 军票悬浮框选项，默认开启，可恢复显示；不会停止自动交纳。\n· 跨插件隐藏可能随版本变化失效，游戏内显示仍待验收。\nEnglish\n· Sort the list by Chinese pinyin.\n· Mark listed bag items with a pink mask and X, ahead of UndercutKing 0.1.0.21 blue highlights.\n· Add an enabled-by-default, reversible AutoRetainer GC overlay hiding option; automatic delivery is unaffected.\n· Overlay compatibility may change with plugin updates; in-game appearance remains unverified.",
+    "AcceptsFeedback": true
   }
 ]
