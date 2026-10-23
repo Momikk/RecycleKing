@@ -1,15 +1,15 @@
 [
   {
     "DownloadCount": 0,
-    "LastUpdate": 1792758783,
+    "LastUpdate": 1792759382,
     "IsTestingExclusive": false,
-    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/abf7383806df99efa5f138016b3dd50e676743aa/dist/RecycleKing-0.1.0.2.zip",
-    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/abf7383806df99efa5f138016b3dd50e676743aa/dist/RecycleKing-0.1.0.2.zip",
+    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/9cb6ff4e2ea9f2175138bdb705cfa342f77f4c91/dist/RecycleKing-0.1.0.3.zip",
+    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/9cb6ff4e2ea9f2175138bdb705cfa342f77f4c91/dist/RecycleKing-0.1.0.3.zip",
     "IsHide": false,
     "Author": "Momikk",
     "Name": "回收之王 RecycleKing",
     "InternalName": "RecycleKing",
-    "AssemblyVersion": "0.1.0.2",
+    "AssemblyVersion": "0.1.0.3",
     "Description": "使用游戏原生 UI 管理回收物品清单，按拼音排序，NQ/HQ 视为同一物品。可出售时背包显示“废品回收”，点击批量出售普通背包中的清单物品；再次点击可停止。清单通过插件设置或 /rking 打开。清单物品显示粉色遮罩与 X，优先于压价之王的蓝框；支持隐藏 AutoRetainer 军票悬浮框及显示稀有品品级。",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/Momikk/RecycleKing",
@@ -25,7 +25,7 @@
     "LoadPriority": 0,
     "IconUrl": "https://raw.githubusercontent.com/Momikk/RecycleKing/main/images/icon.png",
     "Punchline": "管理回收清单，在出售界面批量出售背包废品。",
-    "Changelog": "版本 0.1.0.2\n· 背包按钮改为“废品回收”，仅在可出售时显示，点击批量出售普通背包中的清单物品，包含 HQ 和整组数量；再次点击停止。\n· 原清单界面通过插件设置或 /rking 打开，出售后保留清单。\n· 窗口、物品或交易状态变化及无法核对的确认窗口会停止；已提交的出售仍可能完成。出售流程尚未实机验证。\nEnglish\n· Show the bag recycling button only when selling is available; sell listed normal-bag items, including HQ and full stacks. Click again to stop.\n· Open the list through plugin settings or /rking; keep entries after sales.\n· Stop on context/item changes or unrecognized confirmations; submitted sales may still complete. Selling remains unverified in-game.",
+    "Changelog": "版本 0.1.0.3\n· 修复雇员主菜单下不显示“废品回收”的问题，无需先打开雇员库存；使用“委托雇员出售物品”出售清单物品。关闭或切换雇员后停止回收。雇员出售流程尚未实机验证。\nEnglish\n· Show recycling during an active retainer interaction without opening retainer inventory. Sell listed items through Have Retainer Sell Items. Stop when dismissing or switching retainers. Retainer selling remains unverified in-game.",
     "AcceptsFeedback": true
   }
 ]
