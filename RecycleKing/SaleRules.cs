@@ -3,12 +3,27 @@ namespace RecycleKing;
 internal readonly record struct SaleSlot(int Page, int Slot, uint Id, int Quantity, byte Flags, string Fingerprint, uint UnitPrice, string Name);
 internal readonly record struct SaleContext(byte Kind, nint Agent, nint Addon, uint AddonId, ulong Character, uint Territory, ulong Retainer);
 
+internal readonly record struct SaleMenuRow(string Text, bool Plain, bool Enabled, bool Submenu);
+
 internal static class SaleRules
 {
     internal static bool RetainerAvailable(bool agentActive, ulong liveId, ulong selectedId)
         => agentActive && liveId != 0 && liveId == selectedId;
 
-    internal static bool RetainerSellAction(ulong callback) => callback == 5;
+    internal static int NativeSaleIndex(IReadOnlyList<SaleMenuRow> rows, IReadOnlyList<string> labels)
+    {
+        var match = -1;
+        for (var i = 0; i < rows.Count; i++)
+        {
+            var row = rows[i];
+            if (!row.Plain || string.IsNullOrWhiteSpace(row.Text)
+                || !labels.Contains(row.Text, StringComparer.Ordinal)) continue;
+            // Duplicate labels are ambiguous even if one happens to be disabled.
+            if (match >= 0 || !row.Enabled || row.Submenu) return -1;
+            match = i;
+        }
+        return match;
+    }
 
     internal const ulong GilCap = 999_999_999;
 

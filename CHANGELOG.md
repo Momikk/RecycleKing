@@ -2,6 +2,10 @@
 
 [中文更新记录](CHANGELOG.zh-CN.md)
 
+## 0.1.0.4 — 2026-10-23
+
+Fix retainer recycling stopping at the item menu with a native sale-menu verification error. Locate Have Retainer Sell Items using the game label. Show a specific reason if verification fails. Actual selling still requires in-game verification.
+
 ## 0.1.0.3 — 2026-10-23
 
 Show recycling during an active retainer interaction without opening retainer inventory. Sell listed items through Have Retainer Sell Items. Stop when dismissing or switching retainers. Retainer selling remains unverified in-game.

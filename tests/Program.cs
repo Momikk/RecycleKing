@@ -94,10 +94,29 @@ Check(SaleRules.RetainerAvailable(true, 42, 42), "live retainer supports sales w
 Check(!SaleRules.RetainerAvailable(true, 0, 42), "historical retainer does not enable sales");
 Check(!SaleRules.RetainerAvailable(false, 42, 42), "inactive retainer cannot sell");
 Check(!SaleRules.RetainerAvailable(true, 42, 43), "mismatched retainer cannot sell");
-Check(SaleRules.RetainerSellAction(5), "native retainer sale accepted");
-Check(!SaleRules.RetainerSellAction(2), "market listing rejected");
-Check(!SaleRules.RetainerSellAction(0) && !SaleRules.RetainerSellAction(1) && !SaleRules.RetainerSellAction(3) && !SaleRules.RetainerSellAction(4), "storage actions rejected");
-Console.WriteLine($"Passed {checks} total checks including live-retainer availability.");
+var retainerLabels = new[] { "委托雇员出售物品" };
+var menuRows = new[] {
+    new SaleMenuRow("到市场出售", true, true, false),
+    new SaleMenuRow("交给雇员保管", true, true, false),
+    new SaleMenuRow("交给雇员保管指定数量", true, true, false),
+    new SaleMenuRow("委托雇员出售物品", true, true, false),
+    new SaleMenuRow("舍弃", true, true, false),
+    new SaleMenuRow("加入回收清单", false, false, false)
+};
+Check(SaleRules.NativeSaleIndex(menuRows, retainerLabels) == 3, "reported retainer menu selects sell not market or discard");
+Check(SaleRules.NativeSaleIndex(menuRows.Take(3).ToArray(), retainerLabels) == -1, "storage and market alone cannot sell");
+Check(SaleRules.NativeSaleIndex(menuRows.Reverse().ToArray(), retainerLabels) == 2, "resolve actual reordered display index");
+Check(SaleRules.NativeSaleIndex(new[] { menuRows[5] }.Concat(menuRows).ToArray(), retainerLabels) == 4, "plugin prefix rows do not shift sale target incorrectly");
+Check(SaleRules.NativeSaleIndex(new[] { menuRows[3] with { Enabled = false } }, retainerLabels) == -1, "disabled sale rejected");
+Check(SaleRules.NativeSaleIndex(new[] { menuRows[3] with { Plain = false } }, retainerLabels) == -1, "decorated plugin item with identical text rejected");
+Check(SaleRules.NativeSaleIndex(new[] { menuRows[3] with { Submenu = true } }, retainerLabels) == -1, "submenu rejected");
+Check(SaleRules.NativeSaleIndex(new[] { menuRows[3], menuRows[3] }, retainerLabels) == -1, "duplicate native sale labels rejected");
+Check(SaleRules.NativeSaleIndex(new[] { menuRows[3], menuRows[3] with { Enabled = false } }, retainerLabels) == -1, "enabled and disabled duplicate rejected");
+Check(SaleRules.NativeSaleIndex(new[] { menuRows[3] with { Text = "委托雇员出售物品其他" } }, retainerLabels) == -1, "partial match rejected");
+Check(SaleRules.NativeSaleIndex(Array.Empty<SaleMenuRow>(), retainerLabels) == -1, "empty menu rejected");
+Check(SaleRules.NativeSaleIndex(new[] { default(SaleMenuRow) }, retainerLabels) == -1, "nontext row rejected");
+Check(SaleRules.NativeSaleIndex(new[] { new SaleMenuRow("Have Retainer Sell Items", true, true, false) }, new[] { "Have Retainer Sell Items" }) == 0, "localized game label supported");
+Console.WriteLine($"Passed {checks} total checks including native sale-menu regression cases.");
 
 sealed class FakeOverlay
 {

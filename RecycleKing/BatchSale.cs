@@ -10,6 +10,7 @@ using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using GameFramework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework;
+using AddonText = Lumina.Excel.Sheets.Addon;
 using Item = Lumina.Excel.Sheets.Item;
 
 namespace RecycleKing;
@@ -115,7 +116,8 @@ internal sealed unsafe class BatchSale : IDisposable
             if (HasDialog()) { Stop("出现非本次出售的确认窗口，已停止。"); return; }
             var menu = (AddonContextMenu*)Addon("ContextMenu");
             if (menu == null) return;
-            if (!Unchanged(inventory) || !SelectSell(menu)) { Stop("无法核对原生出售菜单，已停止。"); return; }
+            if (!Unchanged(inventory)) { Stop("待出售物品已变化，已停止。"); return; }
+            if (!SelectSell(menu, out var reason)) { Stop($"无法核对原生出售菜单（{reason}），已停止。"); return; }
             phase = 2;
             deadline = now + 15000;
             return;
@@ -164,46 +166,49 @@ internal sealed unsafe class BatchSale : IDisposable
         }
     }
 
-    private bool SelectSell(AddonContextMenu* menu)
+    private bool SelectSell(AddonContextMenu* menu, out string reason)
     {
+        reason = "物品菜单来源不匹配";
         var agent = AgentInventoryContext.Instance();
-        if (agent == null || agent->OwnerAddonId != bagAddonId || agent->TargetInventoryId != (InventoryType)((int)InventoryType.Inventory1 + current.Page)
-            || agent->TargetInventorySlotId != current.Slot || agent->ContextCallbackInfos == null
-            || menu->AtkValuesCount < 8) return false;
+        if (agent == null || agent->OwnerAddonId != bagAddonId
+            || agent->TargetInventoryId != (InventoryType)((int)InventoryType.Inventory1 + current.Page)
+            || agent->TargetInventorySlotId != current.Slot) return false;
+        reason = "菜单内容不完整";
+        if (menu->AtkValuesCount < 8) return false;
         var count = (int)menu->AtkValues[0].UInt;
         if (count is < 1 or > 32 || count + 8 > menu->AtkValuesCount) return false;
-        var retainer = context.Kind == 2 ? (AgentRetainer*)context.Agent : null;
-        var handler = context.Kind == 1 ? Handler(context) : null;
-        var receiver = retainer != null ? &retainer->InventoryContextEvent : handler != null ? &handler->InventoryContextEvent : null;
-        if (receiver == null) return false;
-        var match = -1;
-        for (var i = 0; i < Math.Min(count, agent->ContextItemCount); i++)
+
+        // Inventory built-in entries do not require ContextCallbackInfos. That registry
+        // is not indexed by visible menu rows, which may also include Dalamud entries.
+        // Read the localized game label, then resolve its actual displayed row.
+        string[] labels;
+        if (context.Kind == 2)
         {
-            var info = agent->ContextCallbackInfos[i];
-            if (info.Handler != receiver || agent->IsContextItemDisabled(i) || (retainer != null && !SaleRules.RetainerSellAction(info.CallbackParam))) continue;
-            if (match >= 0) return false;
-            match = i;
+            reason = "雇员出售文本不可用";
+            if (!Plugin.Data.GetExcelSheet<AddonText>().TryGetRow(5480, out var sell)) return false;
+            var label = sell.Text.ExtractText();
+            if (string.IsNullOrWhiteSpace(label)) return false;
+            labels = [label];
         }
-        // Ordinary gil shops may expose Sell as a built-in inventory event instead of a custom receiver.
-        // Limit this fallback to a plain native label in an owned NPC shop; never match market-sale labels.
-        if (match < 0 && context.Kind == 1)
-        {
-            for (var i = 0; i < Math.Min(count, agent->ContextItemCount); i++)
-            {
-                if (agent->IsContextItemDisabled(i)) continue;
-                var value = menu->AtkValues[8 + i];
-                if (value.Type is not (AtkValueType.String or AtkValueType.ManagedString or AtkValueType.ConstString)) continue;
-                var text = value.String.AsDalamudSeString();
-                if (text.Payloads.Count != 1 || text.Payloads[0] is not TextPayload) continue;
-                if (text.TextValue is not ("出售" or "Sell" or "売却" or "Verkaufen" or "Vendre")) continue;
-                if (match >= 0) return false;
-                match = i;
-            }
-        }
-        if (match < 0) return false;
+        else if (context.Kind == 1) labels = ["出售", "Sell", "売却", "Verkaufen", "Vendre"];
+        else return false;
+
+        var rows = new SaleMenuRow[count];
         var nativeList = menu->GetComponentListById(2);
-        var row = nativeList == null ? null : nativeList->GetItemRenderer(match);
-        if (row == null || !row->IsEnabled) return false;
+        reason = "菜单列表尚未就绪";
+        if (nativeList == null) return false;
+        for (var i = 0; i < count; i++)
+        {
+            var value = menu->AtkValues[8 + i];
+            if (value.Type is not (AtkValueType.String or AtkValueType.ManagedString or AtkValueType.ConstString)) continue;
+            var text = value.String.AsDalamudSeString();
+            var renderer = nativeList->GetItemRenderer(i);
+            rows[i] = new(text.TextValue, text.Payloads.Count == 1 && text.Payloads[0] is TextPayload,
+                renderer != null && renderer->IsEnabled, (menu->AtkValues[3].UInt & (1u << i)) != 0);
+        }
+        var match = SaleRules.NativeSaleIndex(rows, labels);
+        reason = "未找到唯一可用的原生出售项";
+        if (match < 0) return false;
         Callback((AtkUnitBase*)menu, [0, match, 0]);
         return true;
     }
