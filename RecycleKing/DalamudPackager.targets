@@ -1,0 +1,9 @@
+<Project>
+  <!-- Generate the official manifest here; build.ps1 creates the ZIP directly in the workspace. -->
+  <Target Name="RecycleKingManifest" AfterTargets="Build">
+    <DalamudPackager ProjectDir="$(ProjectDir)" OutputPath="$(OutputPath)"
+      AssemblyName="$(AssemblyName)" MakeZip="false" Author="$(Author)" Name="$(Name)"
+      Punchline="$(Punchline)" Description="$(Description)" Tags="$(Tags)" RepoUrl="$(RepoUrl)" IconUrl="$(IconUrl)"
+      DalamudApiLevel="$(DalamudApiLevel)" CanUnloadAsync="$(CanUnloadAsync)" Changelog="$(Changelog)" />
+  </Target>
+</Project>

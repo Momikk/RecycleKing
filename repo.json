@@ -1,0 +1,31 @@
+[
+  {
+    "Author": "Momikk",
+    "Name": "回收之王 RecycleKing",
+    "InternalName": "RecycleKing",
+    "AssemblyVersion": "0.1.0.0",
+    "Description": "使用游戏原生 UI 管理回收物品清单。点击背包底部的“回收废品”打开清单，右键物品通过带粉色 K 的“加入回收清单”登记；NQ/HQ 视为同一物品，支持逐项移出和清空。大国防联军“筹备稀有品”列表增加品级列。当前不执行出售、丢弃、分解或交纳操作。可通过 /recycleking 或 /rking 打开。",
+    "ApplicableVersion": "any",
+    "RepoUrl": "https://github.com/Momikk/RecycleKing",
+    "Tags": [
+      "inventory",
+      "recycle",
+      "list"
+    ],
+    "DalamudApiLevel": 15,
+    "LoadRequiredState": 0,
+    "LoadSync": false,
+    "CanUnloadAsync": true,
+    "LoadPriority": 0,
+    "IconUrl": "https://raw.githubusercontent.com/Momikk/RecycleKing/main/images/icon.png",
+    "Punchline": "在背包中管理自己的回收物品清单。",
+    "Changelog": "版本 0.1.0.0\n· 增加背包“回收废品”入口和带粉色 K 的右键加入菜单。\n· 清单显示图标、名称，支持移出和清空；HQ/NQ 合并保存。\n· 筹备稀有品列表增加物品品级列。\n· 当前不自动处理或交纳物品，界面仍待游戏内验收。\nEnglish\n· Add a native inventory button and a pink K context-menu entry.\n· List icons and names; remove or clear entries and save HQ/NQ together.\n· Show item levels in the expert delivery list.\n· No automatic item processing or delivery; in-game UI verification is pending.",
+    "AcceptsFeedback": true,
+    "DownloadCount": 0,
+    "LastUpdate": 1792756109,
+    "IsTestingExclusive": false,
+    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/main/dist/RecycleKing-0.1.0.0.zip",
+    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/main/dist/RecycleKing-0.1.0.0.zip",
+    "IsHide": false
+  }
+]
