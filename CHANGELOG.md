@@ -2,6 +2,10 @@
 
 [中文更新记录](CHANGELOG.zh-CN.md)
 
+## 0.1.1.0 — 2026-10-23
+
+Keep the recycling button visible while the retainer selling list is open. Temporarily disable it during manual sales or price editing instead of repeatedly hiding it. Visibility and disabled states remain unverified in-game.
+
 ## 0.1.0.5 — 2026-10-23
 
 Speed up batch selling by processing ready menus and quantity confirmations immediately and removing extra per-stack delays to reduce window flicker. Keep inventory and gil checks; wait for game responses. Speed and window behavior remain unverified in-game.

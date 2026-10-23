@@ -39,6 +39,9 @@ internal sealed unsafe class BatchSale : IDisposable
 
     internal bool IsRunning { get; private set; }
     internal string Status { get; private set; } = "点击废品回收，出售普通背包中的清单物品（含 HQ）。";
+    // Visibility follows the selling session; transient menus and transactions
+    // affect availability only, so manual actions do not make the button flicker.
+    internal bool ShowButton => IsRunning || Addon("RetainerSellList") != null || Addon("RetainerSell") != null || TryContext(out _);
     internal bool CanStart => TryContext(out var value) && !Busy(value) && !HasDialog() && Addon("ContextMenu") == null;
 
     internal BatchSale(Plugin plugin)

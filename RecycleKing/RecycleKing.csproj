@@ -1,18 +1,18 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
   <PropertyGroup>
-    <Version>0.1.0.5</Version>
+    <Version>0.1.1.0</Version>
     <Author>Momikk</Author>
     <Name>回收之王 RecycleKing</Name>
     <RepoUrl>https://github.com/Momikk/RecycleKing</RepoUrl>
     <IconUrl>https://raw.githubusercontent.com/Momikk/RecycleKing/main/images/icon.png</IconUrl>
     <Punchline>管理回收清单，在出售界面批量出售背包废品。</Punchline>
-    <Description>使用游戏原生 UI 管理回收物品清单，按拼音排序，NQ/HQ 视为同一物品。可出售时背包显示“废品回收”，点击批量出售普通背包中的清单物品；再次点击可停止。清单通过插件设置或 /rking 打开。清单物品显示粉色遮罩与 X，优先于压价之王的蓝框；支持隐藏 AutoRetainer 军票悬浮框及显示稀有品品级。</Description>
+    <Description>使用游戏原生 UI 管理回收物品清单，按拼音排序，NQ/HQ 视为同一物品。出售界面中背包显示“废品回收”，交易繁忙时暂时禁用，点击批量出售普通背包中的清单物品；再次点击可停止。清单通过插件设置或 /rking 打开。清单物品显示粉色遮罩与 X，优先于压价之王的蓝框；支持隐藏 AutoRetainer 军票悬浮框及显示稀有品品级。</Description>
     <Tags>inventory;recycle;list</Tags>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <CanUnloadAsync>true</CanUnloadAsync>
-    <Changelog>版本 0.1.0.5&#10;· 加快批量出售：立即处理已就绪的菜单和数量确认，移除每组额外等待，减少窗口闪烁。保留库存与金币核对；游戏响应较慢时仍会等待。新版速度和窗口表现尚未实机验证。&#10;English&#10;· Speed up batch selling by processing ready menus and quantity confirmations immediately and removing extra per-stack delays to reduce window flicker. Keep inventory and gil checks; wait for game responses. Speed and window behavior remain unverified in-game.</Changelog>
+    <Changelog>版本 0.1.1.0&#10;· 雇员出售列表打开时固定显示“废品回收”按钮，手动出售或调整价格期间暂时禁用，不再反复显隐。按钮显示与禁用表现尚未实机验证。&#10;English&#10;· Keep the recycling button visible while the retainer selling list is open. Temporarily disable it during manual sales or price editing instead of repeatedly hiding it. Visibility and disabled states remain unverified in-game.</Changelog>
     <PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
   </PropertyGroup>
   <ItemGroup>
