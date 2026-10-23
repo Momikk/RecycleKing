@@ -8,7 +8,9 @@ The native, scrollable list has columns for icons, names, and removal buttons. A
 
 The Grand Company expert delivery list also gains an item-level column beside the item names.
 
-Version **0.1.0.0 is an early testing release**. It does not sell, discard, desynthesize, or deliver items automatically. The inventory button supports all three bag layouts. The context entry applies to inventory item menus, excluding chat links and key items. In-game placement, themes, scaling, reopening, and unloading still require verification.
+Version **0.1.0.1 is an early testing release**. The list is sorted by Chinese pinyin. Listed bag items receive a pink mask and X, taking priority over UndercutKing 0.1.0.21 blue highlights. Both this marker and AutoRetainer GC overlay hiding are enabled by default and can be switched off at the top of the window. Hiding the AutoRetainer overlay does not stop automatic delivery; compatibility may require updates when AutoRetainer changes.
+
+The plugin does not sell, discard, desynthesize, or deliver items automatically. The inventory button supports all three bag layouts. The context entry applies to inventory item menus, excluding chat links and key items. In-game placement, themes, scaling, reopening, and unloading still require verification.
 
 Add the [Momikk plugin feed](https://raw.githubusercontent.com/Momikk/DalamudPlugins/main/pluginmaster.json) in Dalamud's third-party repository settings, then search for **RecycleKing**. Report problems through [GitHub Issues](https://github.com/Momikk/RecycleKing/issues).
 

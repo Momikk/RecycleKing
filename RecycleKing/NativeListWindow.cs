@@ -18,6 +18,8 @@ internal sealed unsafe class NativeListWindow : NativeAddon
     private ResNode? heading;
     private TextButtonNode? clear;
     private TextButtonNode? cancel;
+    private CheckboxNode? hideOverlay;
+    private CheckboxNode? highlight;
     private int revision = -1;
     private bool confirmClear;
     private bool pendingOpen;
@@ -52,7 +54,22 @@ internal sealed unsafe class NativeListWindow : NativeAddon
     {
         var origin = ContentStartPosition;
         var width = ContentSize.X;
-        heading = new ResNode { Position = origin, Size = new(width, 28) };
+        hideOverlay = new CheckboxNode
+        {
+            Position = origin, Size = new(width, 24), String = "隐藏 AutoRetainer 军票悬浮框",
+            IsChecked = plugin.Config.HideAutoRetainerGcOverlay,
+            TextTooltip = "仅隐藏悬浮框，不会停止 AutoRetainer 已启用的自动交纳。关闭本选项可恢复；插件更新后可能需要适配。",
+            OnClick = value => { plugin.Config.HideAutoRetainerGcOverlay = value; plugin.Save(); },
+        };
+        AddNode(hideOverlay);
+        highlight = new CheckboxNode
+        {
+            Position = origin + new Vector2(0, 27), Size = new(width, 24), String = "背包清单物品显示粉色遮罩与 X",
+            IsChecked = plugin.Config.HighlightListedItems,
+            OnClick = value => { plugin.Config.HighlightListedItems = value; plugin.Save(); },
+        };
+        AddNode(highlight);
+        heading = new ResNode { Position = origin + new Vector2(0, 56), Size = new(width, 28) };
         AddNode(heading);
         foreach (var (label, x, cellWidth) in new[] { ("图标", 0f, 40f), ("物品名称", 44f, width - 156), ("操作", width - 112, 96f) })
         {
@@ -65,7 +82,7 @@ internal sealed unsafe class NativeListWindow : NativeAddon
         }
         list = new ListNode<RecycleRow, RecycleRowNode>
         {
-            Position = origin + new Vector2(0, 30), Size = new(width, ContentSize.Y - 102),
+            Position = origin + new Vector2(0, 86), Size = new(width, ContentSize.Y - 158),
             OptionsList = [], AutoResetScroll = false, ItemSpacing = 2,
         };
         list.NoResultsTextNode.TextId = 0;
@@ -107,9 +124,9 @@ internal sealed unsafe class NativeListWindow : NativeAddon
     {
         if (list is null) return;
         var sheet = Plugin.Data.GetExcelSheet<Item>();
-        list.OptionsList = plugin.Config.ItemIds.Select(id => sheet.TryGetRow(id, out var item)
+        list.OptionsList = PinyinOrder.Sort(plugin.Config.ItemIds.Select(id => sheet.TryGetRow(id, out var item)
             ? new RecycleRow(id, item.Icon, item.Name.ExtractText(), plugin.Remove)
-            : new RecycleRow(id, 0, $"未知物品 #{id}", plugin.Remove)).ToList();
+            : new RecycleRow(id, 0, $"未知物品 #{id}", plugin.Remove)), row => row.Name, row => row.Id);
         revision = plugin.Revision;
         UpdateControls();
     }
@@ -120,7 +137,7 @@ internal sealed unsafe class NativeListWindow : NativeAddon
         clear.String = confirmClear ? "确认清空清单" : "清空清单";
         clear.IsEnabled = plugin.Config.ItemIds.Count > 0;
         cancel.IsVisible = confirmClear;
-        count.String = confirmClear ? "再次点击确认清空，仅移除清单记录。" : $"共 {plugin.Config.ItemIds.Count} 种物品 · HQ/NQ 合并";
+        count.String = confirmClear ? "再次点击确认清空，仅移除清单记录。" : $"共 {plugin.Config.ItemIds.Count} 种物品 · 拼音排序 · HQ/NQ 合并";
     }
 
     protected override void OnFinalize(AtkUnitBase* addon)
@@ -130,6 +147,8 @@ internal sealed unsafe class NativeListWindow : NativeAddon
         count?.Dispose(); count = null;
         clear?.Dispose(); clear = null;
         cancel?.Dispose(); cancel = null;
+        hideOverlay?.Dispose(); hideOverlay = null;
+        highlight?.Dispose(); highlight = null;
         confirmClear = false;
     }
 

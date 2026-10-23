@@ -1,8 +1,10 @@
 # 构建与开发加载
 
-使用 .NET 10 SDK 和 Dalamud API 15。运行 `./build.ps1`，默认查找 XIVLauncherCN 或 XIVLauncher 的开发程序集，也可通过 `DALAMUD_HOME` 指定。脚本生成 `dist/RecycleKing-0.1.0.0.zip`。官方打包器负责生成插件清单；压缩包由脚本直接写入工作区。
+使用 .NET 10 SDK 和 Dalamud API 15。运行 `./build.ps1`，默认查找 XIVLauncherCN 或 XIVLauncher 的开发程序集，也可通过 `DALAMUD_HOME` 指定。脚本生成 `dist/RecycleKing-0.1.0.1.zip`。官方打包器负责生成插件清单；压缩包由脚本直接写入工作区。
 
-运行 `dotnet run --project tests/RecycleList.Tests.csproj -c Release` 检查 HQ/NQ 去重、不同物品隔离、无效 ID 排除、列表序列化往返及单项移出。测试不运行游戏。
+运行 `dotnet run --project tests/RecycleList.Tests.csproj -c Release` 检查清单、品级、拼音排序、背包匹配和可恢复的悬浮框隐藏。测试不运行游戏。
+
+`RecycleKing.GetHighlightedItemIds` 是可选 IPC，返回启用粉色标记时的基础物品 ID 数组；关闭标记时返回空数组。压价之王 0.1.0.21 使用此结果排除蓝框，不要求另一个插件必须安装。AutoRetainer 兼容不依赖 ECommons 或 Dalamud 内部插件管理器，仅访问已加载程序集中的已知悬浮框字段；其依据为 [AutoRetainer 上游代码](https://github.com/PunishXIV/AutoRetainer/blob/master/AutoRetainer/Modules/GcHandin/AutoGCHandin.cs)。
 
 在 Dalamud 设置的开发插件路径中添加 `RecycleKing/bin/Release/RecycleKing.dll`，然后在插件安装器的开发工具页启用。请保留旁边的 `RecycleKing.json`、`RecycleKing.KamiToolKit.dll`、`Assets` 和 `licenses` 文件夹。
 

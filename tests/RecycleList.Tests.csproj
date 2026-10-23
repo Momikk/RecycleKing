@@ -8,5 +8,8 @@
   <ItemGroup>
     <Compile Include="../RecycleKing/RecycleList.cs" Link="RecycleList.cs" />
     <Compile Include="../RecycleKing/DeliveryLevelMatch.cs" Link="DeliveryLevelMatch.cs" />
+    <Compile Include="../RecycleKing/PinyinOrder.cs" Link="PinyinOrder.cs" />
+    <Compile Include="../RecycleKing/OverlayVisibilityLease.cs" Link="OverlayVisibilityLease.cs" />
+    <Compile Include="../RecycleKing/RecycleAppearance.cs" Link="RecycleAppearance.cs" />
   </ItemGroup>
 </Project>

@@ -18,12 +18,17 @@ public sealed class Plugin : IAsyncDalamudPlugin
     [PluginService] internal static IDataManager Data { get; private set; } = null!;
     [PluginService] internal static IContextMenu ContextMenu { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
+    [PluginService] internal static IPlayerState Player { get; private set; } = null!;
 
     internal Configuration Config { get; }
     internal int Revision { get; private set; }
     private NativeListWindow? window;
     private InventoryButton? inventoryButton;
     private ExpertDeliveryLevels? deliveryLevels;
+    private AutoRetainerOverlayHider? overlayHider;
+    private RecycleBagOverlay? bagOverlay;
+    private uint[] itemSnapshot = [];
+    internal const string HighlightIpcName = "RecycleKing.GetHighlightedItemIds";
     private bool disposing;
     private static readonly string[] CommandNames = ["/recycleking", "/rking"];
 
@@ -31,6 +36,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
     {
         Config = PluginInterface.GetPluginConfig() as Configuration ?? new();
         Config.ItemIds = RecycleList.Normalize(Config.ItemIds ?? []);
+        itemSnapshot = Config.ItemIds.ToArray();
     }
 
     public async Task LoadAsync(CancellationToken cancellationToken)
@@ -41,10 +47,14 @@ public sealed class Plugin : IAsyncDalamudPlugin
         {
             window = new NativeListWindow(this)
             {
-                InternalName = "RecycleKingList", Title = "回收之王", Size = new(510, 470),
+                InternalName = "RecycleKingList", Title = "回收之王", Size = new(510, 530),
             };
             inventoryButton = new InventoryButton(OpenList);
             deliveryLevels = new ExpertDeliveryLevels();
+            overlayHider = new AutoRetainerOverlayHider(this);
+            bagOverlay = new RecycleBagOverlay(this);
+            PluginInterface.UiBuilder.Draw += DrawOverlays;
+            PluginInterface.GetIpcProvider<uint[]>(HighlightIpcName).RegisterFunc(() => HighlightedItemIds().ToArray());
             foreach (var command in CommandNames)
                 Commands.AddHandler(command, new CommandInfo((_, _) => OpenList()) { HelpMessage = "打开回收之王物品清单。" });
             ContextMenu.OnMenuOpened += OnMenuOpened;
@@ -60,7 +70,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
         if (id is 0 or >= 500_000 || !Data.GetExcelSheet<Item>().TryGetRow(id, out _)) return;
         args.AddMenuItem(new MenuItem
         {
-            Name = "加入回收清单", PrefixChar = 'K', PrefixColor = 547,
+            Name = "加入回收清单", PrefixChar = 'K', PrefixColor = RecycleAppearance.PrefixColor,
             IsEnabled = !Config.ItemIds.Contains(id),
             OnClicked = _ => Queue(() =>
             {
@@ -81,13 +91,22 @@ public sealed class Plugin : IAsyncDalamudPlugin
         Save();
     }
 
-    private void Save()
+    internal void Save()
     {
+        itemSnapshot = Config.ItemIds.ToArray();
         Revision++;
         PluginInterface.SavePluginConfig(Config);
     }
 
     internal void OpenList() => Queue(() => window?.RequestOpen());
+    internal uint[] HighlightedItemIds() => Config.HighlightListedItems ? itemSnapshot : [];
+
+    private void DrawOverlays()
+    {
+        if (disposing) return;
+        overlayHider?.Draw();
+        bagOverlay?.Draw();
+    }
 
     private void Queue(Action action) => _ = Framework.Run(() =>
     {
@@ -99,6 +118,9 @@ public sealed class Plugin : IAsyncDalamudPlugin
     public async ValueTask DisposeAsync()
     {
         disposing = true;
+        PluginInterface.GetIpcProvider<uint[]>(HighlightIpcName).UnregisterFunc();
+        PluginInterface.UiBuilder.Draw -= DrawOverlays;
+        overlayHider?.Dispose();
         await Framework.Run(() =>
         {
             ContextMenu.OnMenuOpened -= OnMenuOpened;
