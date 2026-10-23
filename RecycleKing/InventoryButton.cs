@@ -12,12 +12,12 @@ internal sealed unsafe class InventoryButton : IDisposable
 {
     private static readonly string[] AddonNames = ["Inventory", "InventoryLarge", "InventoryExpansion"];
     private readonly Dictionary<string, TextButtonNode> buttons = [];
-    private readonly Action open;
+    private readonly Plugin plugin;
     private long retryAfter;
 
-    internal InventoryButton(Action open)
+    internal InventoryButton(Plugin plugin)
     {
-        this.open = open;
+        this.plugin = plugin;
         Plugin.Addons.RegisterListener(AddonEvent.PreFinalize, AddonNames, OnFinalize);
         Plugin.Framework.Update += Update;
     }
@@ -27,6 +27,7 @@ internal sealed unsafe class InventoryButton : IDisposable
         if (Environment.TickCount64 < retryAfter) return;
         try
         {
+            var show = plugin.Sales.IsRunning || plugin.Sales.CanStart;
             foreach (var name in AddonNames)
             {
                 var handle = Plugin.GameGui.GetAddonByName(name);
@@ -35,22 +36,26 @@ internal sealed unsafe class InventoryButton : IDisposable
                 if (addon->RootNode == null) continue;
                 if (!buttons.TryGetValue(name, out var button))
                 {
-                    if (!handle.IsVisible) continue;
+                    if (!handle.IsVisible || !show) continue;
                     button = new TextButtonNode
                     {
-                        String = "回收废品", Size = new Vector2(112, 28), OnClick = open,
-                        TextTooltip = "打开回收之王物品清单",
+                        String = "废品回收", Size = new Vector2(112, 28), OnClick = plugin.Sales.Toggle,
                     };
                     try { button.AttachNode(addon); buttons.Add(name, button); }
                     catch { button.Dispose(); throw; }
                 }
                 // Coordinates are local to the native root, so movement and UI scaling follow the bag.
                 button.Position = new Vector2(12, Math.Max(0, addon->RootNode->Height - 50));
-                button.IsVisible = handle.IsVisible;
+                button.IsVisible = handle.IsVisible && show;
+                button.String = plugin.Sales.IsRunning ? "停止回收" : "废品回收";
+                button.IsEnabled = plugin.Sales.IsRunning || plugin.Config.ItemIds.Count > 0;
+                button.TextTooltip = plugin.Sales.IsRunning ? plugin.Sales.Status + "\n点击停止；已提交的出售仍可能完成。"
+                    : "点击即批量出售普通背包中的清单物品，包含 HQ 和整组数量。\n管理清单请打开插件设置或输入 /rking。";
             }
         }
         catch (Exception exception)
         {
+            foreach (var button in buttons.Values) button.IsVisible = false;
             retryAfter = Environment.TickCount64 + 5000;
             Plugin.Log.Error(exception, "回收之王无法添加背包按钮，将稍后重试。");
         }

@@ -11,5 +11,6 @@
     <Compile Include="../RecycleKing/PinyinOrder.cs" Link="PinyinOrder.cs" />
     <Compile Include="../RecycleKing/OverlayVisibilityLease.cs" Link="OverlayVisibilityLease.cs" />
     <Compile Include="../RecycleKing/RecycleAppearance.cs" Link="RecycleAppearance.cs" />
+    <Compile Include="../RecycleKing/SaleRules.cs" Link="SaleRules.cs" />
   </ItemGroup>
 </Project>

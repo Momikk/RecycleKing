@@ -19,9 +19,13 @@ public sealed class Plugin : IAsyncDalamudPlugin
     [PluginService] internal static IContextMenu ContextMenu { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
     [PluginService] internal static IPlayerState Player { get; private set; } = null!;
+    [PluginService] internal static ICondition Conditions { get; private set; } = null!;
+    [PluginService] internal static IClientState ClientState { get; private set; } = null!;
+    [PluginService] internal static IChatGui Chat { get; private set; } = null!;
 
     internal Configuration Config { get; }
     internal int Revision { get; private set; }
+    internal BatchSale Sales { get; private set; } = null!;
     private NativeListWindow? window;
     private InventoryButton? inventoryButton;
     private ExpertDeliveryLevels? deliveryLevels;
@@ -49,7 +53,8 @@ public sealed class Plugin : IAsyncDalamudPlugin
             {
                 InternalName = "RecycleKingList", Title = "回收之王", Size = new(510, 530),
             };
-            inventoryButton = new InventoryButton(OpenList);
+            Sales = new BatchSale(this);
+            inventoryButton = new InventoryButton(this);
             deliveryLevels = new ExpertDeliveryLevels();
             overlayHider = new AutoRetainerOverlayHider(this);
             bagOverlay = new RecycleBagOverlay(this);
@@ -128,6 +133,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
             PluginInterface.UiBuilder.OpenConfigUi -= OpenList;
             foreach (var command in CommandNames) Commands.RemoveHandler(command);
             window?.StopPendingOpen();
+            Sales?.Dispose();
             inventoryButton?.Dispose();
             deliveryLevels?.Dispose();
         });

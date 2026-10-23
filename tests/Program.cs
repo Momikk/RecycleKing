@@ -61,6 +61,35 @@ Check(!RecycleAppearance.ValidSource(4, 0) && !RecycleAppearance.ValidSource(0, 
 Check(RecycleAppearance.Pink(1).X == 196 / 255f && RecycleAppearance.Pink(.28f).W == .28f, "pink mask matches UIColor 547 RGB");
 Console.WriteLine($"Passed {checks} total checks.");
 
+var sale = new SaleSlot(0, 3, 42, 99, 1, "condition:materia", 4, "测试物品");
+Check(SaleRules.Eligible(42, 99, 4, false, new HashSet<uint> { 42 }), "listed stack is eligible");
+Check(!SaleRules.Eligible(42, 99, 0, false, new HashSet<uint> { 42 }), "unsellable item is skipped");
+Check(!SaleRules.Eligible(43, 99, 4, false, new HashSet<uint> { 42 }), "unlisted item is never sold");
+Check(!SaleRules.Eligible(42, 0, 4, false, new HashSet<uint> { 42 }), "empty slot is skipped");
+Check(!SaleRules.Eligible(42, 99, 4, true, new HashSet<uint> { 42 }), "symbolic slot is skipped");
+Check(SaleRules.SameSlot(sale, sale), "unchanged snapshot");
+Check(!SaleRules.SameSlot(sale, sale with { Flags = 0 }), "HQ replaced by NQ stops");
+Check(!SaleRules.SameSlot(sale, sale with { Quantity = 98 }), "stack quantity change stops");
+Check(!SaleRules.SameSlot(sale, sale with { Slot = 4 }), "moved item stops");
+Check(!SaleRules.SameSlot(sale, sale with { Fingerprint = "other materia" }), "equipment state change stops");
+Check(SaleRules.OwnTransaction(sale, 2, 42, 0, 3), "correct native sale transaction");
+Check(!SaleRules.OwnTransaction(sale, 1, 42, 0, 3), "buy transaction is never confirmed");
+Check(!SaleRules.OwnTransaction(sale, 2, 43, 0, 3), "different item dialog is never confirmed");
+Check(!SaleRules.OwnTransaction(sale, 2, 42, 1, 3), "different bag dialog is never confirmed");
+Check(!SaleRules.OwnTransaction(sale, 2, 42, 0, 4), "different slot dialog is never confirmed");
+Check(SaleRules.Confirmed(sale, 110, 11, 100, 496), "full stack and gil acknowledgement");
+Check(!SaleRules.Confirmed(sale, 110, 11, 100, 100), "inventory movement alone is not a sale");
+Check(!SaleRules.Confirmed(sale, 110, 110, 100, 496), "gil increase alone is not a sale");
+Check(!SaleRules.Confirmed(sale, 110, 12, 100, 496), "partial stack is not full completion");
+Check(!SaleRules.Confirmed(sale, 110, 10, 100, 496), "unexpected larger inventory change stops");
+Check(!SaleRules.Confirmed(sale, 110, 11, 100, 495), "insufficient proceeds are not confirmed");
+Check(SaleRules.CanFit(sale, SaleRules.GilCap - 396) && !SaleRules.CanFit(sale, SaleRules.GilCap - 395), "gil cap boundary");
+Check(SaleRules.QuantityMatches(sale, 1, 99) && !SaleRules.QuantityMatches(sale, 1, 100), "quantity prompt must match exact captured stack");
+var saleContext = new SaleContext(2, 1, 2, 3, 4, 5, 6);
+Check(saleContext != saleContext with { Retainer = 7 } && saleContext != saleContext with { Character = 7 }
+    && saleContext != saleContext with { AddonId = 7 } && saleContext != saleContext with { Territory = 7 }, "context changes break batch ownership");
+Console.WriteLine($"Passed {checks} total checks including batch-sale guards.");
+
 sealed class FakeOverlay
 {
     public bool IsOpen { get; set; }
