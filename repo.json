@@ -1,10 +1,10 @@
 [
   {
     "DownloadCount": 0,
-    "LastUpdate": 1792765742,
+    "LastUpdate": 1792766007,
     "IsTestingExclusive": false,
-    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/504e76203eeced970fb6eb8bcc2ff0f000621184/dist/RecycleKing-0.1.1.0.zip",
-    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/504e76203eeced970fb6eb8bcc2ff0f000621184/dist/RecycleKing-0.1.1.0.zip",
+    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/cef2d6e6343beca2ee10408e861f6d667902ba50/dist/RecycleKing-0.1.1.0.zip",
+    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/cef2d6e6343beca2ee10408e861f6d667902ba50/dist/RecycleKing-0.1.1.0.zip",
     "IsHide": false,
     "Author": "Momikk",
     "Name": "回收之王 RecycleKing",
@@ -25,7 +25,7 @@
     "LoadPriority": 0,
     "IconUrl": "https://raw.githubusercontent.com/Momikk/RecycleKing/main/images/icon.png",
     "Punchline": "管理回收清单，在出售界面批量出售背包废品。",
-    "Changelog": "版本 0.1.1.0\n· 雇员出售列表打开时固定显示“废品回收”按钮，手动出售或调整价格期间暂时禁用，不再反复显隐。按钮显示与禁用表现尚未实机验证。\nEnglish\n· Keep the recycling button visible while the retainer selling list is open. Temporarily disable it during manual sales or price editing instead of repeatedly hiding it. Visibility and disabled states remain unverified in-game.",
+    "Changelog": "版本 0.1.1.0\n·雇员出售列表打开时，固定显示“废品回收”。\n·手动出售或调整价格时暂时禁用，不再反复显隐。\n·显示效果待实机验证。\nEnglish\n·Keep recycling visible while the retainer sale list is open.\n·Disable it during manual sales or price editing.\n·UI behavior awaits in-game verification.",
     "AcceptsFeedback": true
   }
 ]
