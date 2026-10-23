@@ -1,15 +1,15 @@
 [
   {
     "DownloadCount": 0,
-    "LastUpdate": 1792759382,
+    "LastUpdate": 1792762515,
     "IsTestingExclusive": false,
-    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/9cb6ff4e2ea9f2175138bdb705cfa342f77f4c91/dist/RecycleKing-0.1.0.3.zip",
-    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/9cb6ff4e2ea9f2175138bdb705cfa342f77f4c91/dist/RecycleKing-0.1.0.3.zip",
+    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/659387be70b3dc6470fa430f35fe183e54a986f3/dist/RecycleKing-0.1.0.4.zip",
+    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/659387be70b3dc6470fa430f35fe183e54a986f3/dist/RecycleKing-0.1.0.4.zip",
     "IsHide": false,
     "Author": "Momikk",
     "Name": "回收之王 RecycleKing",
     "InternalName": "RecycleKing",
-    "AssemblyVersion": "0.1.0.3",
+    "AssemblyVersion": "0.1.0.4",
     "Description": "使用游戏原生 UI 管理回收物品清单，按拼音排序，NQ/HQ 视为同一物品。可出售时背包显示“废品回收”，点击批量出售普通背包中的清单物品；再次点击可停止。清单通过插件设置或 /rking 打开。清单物品显示粉色遮罩与 X，优先于压价之王的蓝框；支持隐藏 AutoRetainer 军票悬浮框及显示稀有品品级。",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/Momikk/RecycleKing",
@@ -25,7 +25,7 @@
     "LoadPriority": 0,
     "IconUrl": "https://raw.githubusercontent.com/Momikk/RecycleKing/main/images/icon.png",
     "Punchline": "管理回收清单，在出售界面批量出售背包废品。",
-    "Changelog": "版本 0.1.0.3\n· 修复雇员主菜单下不显示“废品回收”的问题，无需先打开雇员库存；使用“委托雇员出售物品”出售清单物品。关闭或切换雇员后停止回收。雇员出售流程尚未实机验证。\nEnglish\n· Show recycling during an active retainer interaction without opening retainer inventory. Sell listed items through Have Retainer Sell Items. Stop when dismissing or switching retainers. Retainer selling remains unverified in-game.",
+    "Changelog": "版本 0.1.0.4\n· 修复雇员回收停在右键菜单并提示“无法核对原生出售菜单”的问题，按游戏原生“委托雇员出售物品”定位出售项。核对失败时显示具体原因。实际出售仍待游戏内验证。\nEnglish\n· Fix retainer recycling stopping at the item menu with a native sale-menu verification error. Locate Have Retainer Sell Items using the game label. Show a specific reason if verification fails. Actual selling still requires in-game verification.",
     "AcceptsFeedback": true
   }
 ]
