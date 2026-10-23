@@ -1,16 +1,16 @@
 [
   {
     "DownloadCount": 0,
-    "LastUpdate": 1792757422,
+    "LastUpdate": 1792758783,
     "IsTestingExclusive": false,
-    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/45575871789245b4b3b9cf936eac88cac9bddc7e/dist/RecycleKing-0.1.0.1.zip",
-    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/45575871789245b4b3b9cf936eac88cac9bddc7e/dist/RecycleKing-0.1.0.1.zip",
+    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/abf7383806df99efa5f138016b3dd50e676743aa/dist/RecycleKing-0.1.0.2.zip",
+    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/abf7383806df99efa5f138016b3dd50e676743aa/dist/RecycleKing-0.1.0.2.zip",
     "IsHide": false,
     "Author": "Momikk",
     "Name": "回收之王 RecycleKing",
     "InternalName": "RecycleKing",
-    "AssemblyVersion": "0.1.0.1",
-    "Description": "使用游戏原生 UI 管理回收物品清单，按拼音排序；NQ/HQ 视为同一物品，支持逐项移出和清空。清单内物品在背包中显示粉色遮罩与 X，优先于新版压价之王的蓝框。可隐藏 AutoRetainer 军票悬浮框，筹备稀有品列表显示物品品级。当前不自动处理物品。可通过 /recycleking 或 /rking 打开。",
+    "AssemblyVersion": "0.1.0.2",
+    "Description": "使用游戏原生 UI 管理回收物品清单，按拼音排序，NQ/HQ 视为同一物品。可出售时背包显示“废品回收”，点击批量出售普通背包中的清单物品；再次点击可停止。清单通过插件设置或 /rking 打开。清单物品显示粉色遮罩与 X，优先于压价之王的蓝框；支持隐藏 AutoRetainer 军票悬浮框及显示稀有品品级。",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/Momikk/RecycleKing",
     "Tags": [
@@ -24,8 +24,8 @@
     "CanUnloadAsync": true,
     "LoadPriority": 0,
     "IconUrl": "https://raw.githubusercontent.com/Momikk/RecycleKing/main/images/icon.png",
-    "Punchline": "在背包中管理自己的回收物品清单。",
-    "Changelog": "版本 0.1.0.1\n· 清单按物品名称拼音排序。\n· 背包清单物品增加粉色遮罩与 X，优先于压价之王 0.1.0.21 的蓝框。\n· 增加隐藏 AutoRetainer 军票悬浮框选项，默认开启，可恢复显示；不会停止自动交纳。\n· 跨插件隐藏可能随版本变化失效，游戏内显示仍待验收。\nEnglish\n· Sort the list by Chinese pinyin.\n· Mark listed bag items with a pink mask and X, ahead of UndercutKing 0.1.0.21 blue highlights.\n· Add an enabled-by-default, reversible AutoRetainer GC overlay hiding option; automatic delivery is unaffected.\n· Overlay compatibility may change with plugin updates; in-game appearance remains unverified.",
+    "Punchline": "管理回收清单，在出售界面批量出售背包废品。",
+    "Changelog": "版本 0.1.0.2\n· 背包按钮改为“废品回收”，仅在可出售时显示，点击批量出售普通背包中的清单物品，包含 HQ 和整组数量；再次点击停止。\n· 原清单界面通过插件设置或 /rking 打开，出售后保留清单。\n· 窗口、物品或交易状态变化及无法核对的确认窗口会停止；已提交的出售仍可能完成。出售流程尚未实机验证。\nEnglish\n· Show the bag recycling button only when selling is available; sell listed normal-bag items, including HQ and full stacks. Click again to stop.\n· Open the list through plugin settings or /rking; keep entries after sales.\n· Stop on context/item changes or unrecognized confirmations; submitted sales may still complete. Selling remains unverified in-game.",
     "AcceptsFeedback": true
   }
 ]
