@@ -1,6 +1,6 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
   <PropertyGroup>
-    <Version>0.1.1.0</Version>
+    <Version>0.1.1.1</Version>
     <Author>Momikk</Author>
     <Name>回收之王 RecycleKing</Name>
     <RepoUrl>https://github.com/Momikk/RecycleKing</RepoUrl>
@@ -12,7 +12,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <CanUnloadAsync>true</CanUnloadAsync>
-    <Changelog>版本 0.1.1.0&#10;·雇员出售列表打开时，固定显示“废品回收”。&#10;·手动出售或调整价格时暂时禁用，不再反复显隐。&#10;·显示效果待实机验证。&#10;English&#10;·Keep recycling visible while the retainer sale list is open.&#10;·Disable it during manual sales or price editing.&#10;·UI behavior awaits in-game verification.</Changelog>
+    <Changelog>版本 0.1.1.1&#10;·浮窗覆盖到的背包格子暂停显示粉色遮罩和 X。&#10;·支持物品说明、右键菜单及出售确认窗口。&#10;·实际遮挡效果待实机验证。&#10;English&#10;·Hide pink masks and X marks on bag slots covered by popups.&#10;·Support item tooltips, context menus and sale dialogs.&#10;·In-game appearance remains unverified.</Changelog>
     <PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
   </PropertyGroup>
   <ItemGroup>

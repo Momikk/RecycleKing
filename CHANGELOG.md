@@ -2,6 +2,12 @@
 
 [中文更新记录](CHANGELOG.zh-CN.md)
 
+## 0.1.1.1 — 2026-10-24
+
+- Hide pink masks and X marks on bag slots covered by popups.
+- Support item tooltips, context menus and sale dialogs.
+- In-game appearance remains unverified.
+
 ## 0.1.1.0 — 2026-10-23
 
 - Keep recycling visible while the retainer sale list is open.

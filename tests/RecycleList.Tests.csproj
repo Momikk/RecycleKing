@@ -13,5 +13,6 @@
     <Compile Include="../RecycleKing/RecycleAppearance.cs" Link="RecycleAppearance.cs" />
     <Compile Include="../RecycleKing/SaleRules.cs" Link="SaleRules.cs" />
     <Compile Include="../RecycleKing/BatchPump.cs" Link="BatchPump.cs" />
+    <Compile Include="../RecycleKing/OverlayOcclusion.cs" Link="OverlayOcclusion.cs" />
   </ItemGroup>
 </Project>

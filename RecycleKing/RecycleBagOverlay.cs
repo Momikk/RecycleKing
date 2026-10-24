@@ -11,6 +11,9 @@ namespace RecycleKing;
 /// <summary>Read-only inventory mapping and non-interactive draw commands; never changes slot colours.</summary>
 internal sealed unsafe class RecycleBagOverlay(Plugin plugin)
 {
+    private static readonly string[] CoverAddons =
+    ["ItemDetail", "ActionDetail", "Tooltip", "ContextMenu", "AddonContextSub", "AddonContextMenuTitle",
+        "SelectYesno", "InputNumeric", "RetainerSell"];
     private HashSet<uint> targets = [];
     private int revision = -1;
     private long retryAfter;
@@ -51,6 +54,8 @@ internal sealed unsafe class RecycleBagOverlay(Plugin plugin)
 
         var draw = ImGui.GetForegroundDrawList();
         var origin = ImGui.GetMainViewport().Pos;
+        var covers = ReadCovers(origin);
+        if (covers == null) return;
         var fill = ImGui.ColorConvertFloat4ToU32(RecycleAppearance.Pink(.28f));
         var pink = ImGui.ColorConvertFloat4ToU32(RecycleAppearance.Pink(1));
         var shadow = ImGui.ColorConvertFloat4ToU32(new Vector4(.08f, .01f, .03f, .95f));
@@ -76,6 +81,7 @@ internal sealed unsafe class RecycleBagOverlay(Plugin plugin)
                 if (bounds.Width is < 12 or > 200 || bounds.Height is < 12 or > 200) continue;
                 var min = origin + new Vector2(bounds.Pos1.X, bounds.Pos1.Y) + Vector2.One;
                 var max = origin + new Vector2(bounds.Pos2.X, bounds.Pos2.Y) - Vector2.One;
+                if (OverlayOcclusion.Covered(new(min, max), covers)) continue;
                 draw.AddRectFilled(min, max, fill, 3);
                 draw.AddRect(min, max, pink, 3, ImDrawFlags.None, 1.5f);
                 var inset = (max - min) * .24f;
@@ -90,6 +96,28 @@ internal sealed unsafe class RecycleBagOverlay(Plugin plugin)
                 draw.AddLine(c, d, pink, thickness);
             }
         }
+    }
+
+    private static List<OverlayBounds>? ReadCovers(Vector2 origin)
+    {
+        var covers = new List<OverlayBounds>();
+        foreach (var name in CoverAddons)
+        {
+            var handle = Plugin.GameGui.GetAddonByName(name);
+            if (handle.IsNull || !handle.IsReady || !handle.IsVisible) continue;
+            var addon = (AtkUnitBase*)handle.Address;
+            var root = addon->RootNode;
+            // While an open popup is rebuilding, omit this frame rather than paint over it.
+            if (root == null) return null;
+            if (!NodeVisible(root)) continue;
+            var bounds = new Bounds();
+            root->GetBounds(&bounds);
+            var cover = new OverlayBounds(origin + new Vector2(bounds.Pos1.X, bounds.Pos1.Y),
+                origin + new Vector2(bounds.Pos2.X, bounds.Pos2.Y));
+            if (!cover.Valid) return null;
+            covers.Add(cover);
+        }
+        return covers;
     }
 
     private static bool NodeVisible(AtkResNode* node)

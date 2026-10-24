@@ -139,6 +139,17 @@ fastPump.Run(() => fastCalls++, () => fastProgress);
 Check(fastCalls == 1, "exception releases pump guard for later user action");
 Console.WriteLine($"Passed {checks} total checks including immediate sale scheduling.");
 
+var slotBounds = new OverlayBounds(new(100, 100), new(140, 140));
+Check(OverlayOcclusion.Covered(slotBounds, new[] { new OverlayBounds(new(110, 80), new(400, 300)) }), "tooltip overlapping slot suppresses mask and X");
+Check(OverlayOcclusion.Covered(slotBounds, new[] { new OverlayBounds(new(0, 0), new(500, 500)) }), "fully covered slot suppressed");
+Check(!OverlayOcclusion.Covered(slotBounds, new[] { new OverlayBounds(new(200, 200), new(400, 400)) }), "uncovered slot keeps highlight");
+Check(OverlayOcclusion.Covered(slotBounds, new[] { new OverlayBounds(new(142, 110), new(400, 300)) }), "shadow extent beside tooltip is suppressed");
+Check(!OverlayOcclusion.Covered(slotBounds, Array.Empty<OverlayBounds>()), "closing tooltip restores highlight");
+Check(OverlayOcclusion.Covered(new(new(600, 500), new(640, 540)), new[] { new OverlayBounds(new(610, 480), new(900, 700)) }), "viewport origin translation preserves overlap");
+Check(OverlayOcclusion.Covered(new(new(150, 150), new(210, 210)), new[] { new OverlayBounds(new(165, 120), new(600, 450)) }), "scaled slot and tooltip overlap");
+Check(!new OverlayBounds(new(float.NaN, 0), new(10, 10)).Valid && !new OverlayBounds(new(10, 10), new(0, 0)).Valid, "invalid native bounds rejected");
+Console.WriteLine($"Passed {checks} total checks including tooltip occlusion.");
+
 sealed class FakeOverlay
 {
     public bool IsOpen { get; set; }
