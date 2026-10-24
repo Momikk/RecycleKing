@@ -1,15 +1,15 @@
 [
   {
     "DownloadCount": 0,
-    "LastUpdate": 1792766007,
+    "LastUpdate": 1792851181,
     "IsTestingExclusive": false,
-    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/cef2d6e6343beca2ee10408e861f6d667902ba50/dist/RecycleKing-0.1.1.0.zip",
-    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/cef2d6e6343beca2ee10408e861f6d667902ba50/dist/RecycleKing-0.1.1.0.zip",
+    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/cb11681bd4c54e040bf3b11e51cd1723a6f5ed9f/dist/RecycleKing-0.1.1.1.zip",
+    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/cb11681bd4c54e040bf3b11e51cd1723a6f5ed9f/dist/RecycleKing-0.1.1.1.zip",
     "IsHide": false,
     "Author": "Momikk",
     "Name": "回收之王 RecycleKing",
     "InternalName": "RecycleKing",
-    "AssemblyVersion": "0.1.1.0",
+    "AssemblyVersion": "0.1.1.1",
     "Description": "使用游戏原生 UI 管理回收物品清单，按拼音排序，NQ/HQ 视为同一物品。出售界面中背包显示“废品回收”，交易繁忙时暂时禁用，点击批量出售普通背包中的清单物品；再次点击可停止。清单通过插件设置或 /rking 打开。清单物品显示粉色遮罩与 X，优先于压价之王的蓝框；支持隐藏 AutoRetainer 军票悬浮框及显示稀有品品级。",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/Momikk/RecycleKing",
@@ -25,7 +25,7 @@
     "LoadPriority": 0,
     "IconUrl": "https://raw.githubusercontent.com/Momikk/RecycleKing/main/images/icon.png",
     "Punchline": "管理回收清单，在出售界面批量出售背包废品。",
-    "Changelog": "版本 0.1.1.0\n·雇员出售列表打开时，固定显示“废品回收”。\n·手动出售或调整价格时暂时禁用，不再反复显隐。\n·显示效果待实机验证。\nEnglish\n·Keep recycling visible while the retainer sale list is open.\n·Disable it during manual sales or price editing.\n·UI behavior awaits in-game verification.",
+    "Changelog": "版本 0.1.1.1\n·浮窗覆盖到的背包格子暂停显示粉色遮罩和 X。\n·支持物品说明、右键菜单及出售确认窗口。\n·实际遮挡效果待实机验证。\nEnglish\n·Hide pink masks and X marks on bag slots covered by popups.\n·Support item tooltips, context menus and sale dialogs.\n·In-game appearance remains unverified.",
     "AcceptsFeedback": true
   }
 ]
