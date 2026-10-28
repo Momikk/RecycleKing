@@ -2,6 +2,10 @@
 
 [中文更新记录](CHANGELOG.zh-CN.md)
 
+## 0.1.1.2 — 2026-10-28
+
+- Move Add to recycling list to the bottom of the context menu.
+
 ## 0.1.1.1 — 2026-10-24
 
 - Hide pink masks and X marks on bag slots covered by popups.

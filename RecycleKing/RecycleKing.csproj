@@ -1,6 +1,6 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
   <PropertyGroup>
-    <Version>0.1.1.1</Version>
+    <Version>0.1.1.2</Version>
     <Author>Momikk</Author>
     <Name>回收之王 RecycleKing</Name>
     <RepoUrl>https://github.com/Momikk/RecycleKing</RepoUrl>
@@ -12,7 +12,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <CanUnloadAsync>true</CanUnloadAsync>
-    <Changelog>版本 0.1.1.1&#10;·浮窗覆盖到的背包格子暂停显示粉色遮罩和 X。&#10;·支持物品说明、右键菜单及出售确认窗口。&#10;·实际遮挡效果待实机验证。&#10;English&#10;·Hide pink masks and X marks on bag slots covered by popups.&#10;·Support item tooltips, context menus and sale dialogs.&#10;·In-game appearance remains unverified.</Changelog>
+    <Changelog>版本 0.1.1.2&#10;·将“加入回收清单”移到右键菜单末尾。&#10;English&#10;·Move Add to recycling list to the bottom of the context menu.</Changelog>
     <PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
   </PropertyGroup>
   <ItemGroup>

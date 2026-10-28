@@ -75,6 +75,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
         if (id is 0 or >= 500_000 || !Data.GetExcelSheet<Item>().TryGetRow(id, out _)) return;
         args.AddMenuItem(new MenuItem
         {
+            Priority = int.MaxValue,
             Name = "加入回收清单", PrefixChar = 'K', PrefixColor = RecycleAppearance.PrefixColor,
             IsEnabled = !Config.ItemIds.Contains(id),
             OnClicked = _ => Queue(() =>

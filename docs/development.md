@@ -1,6 +1,6 @@
 # 构建与开发加载
 
-使用 .NET 10 SDK 和 Dalamud API 15。运行 `./build.ps1`，默认查找 XIVLauncherCN 或 XIVLauncher 的开发程序集，也可通过 `DALAMUD_HOME` 指定。脚本生成 `dist/RecycleKing-0.1.1.1.zip`。官方打包器负责生成插件清单；压缩包由脚本直接写入工作区。
+使用 .NET 10 SDK 和 Dalamud API 15。运行 `./build.ps1`，默认查找 XIVLauncherCN 或 XIVLauncher 的开发程序集，也可通过 `DALAMUD_HOME` 指定。脚本生成 `dist/RecycleKing-0.1.1.2.zip`。官方打包器负责生成插件清单；压缩包由脚本直接写入工作区。
 
 运行 `dotnet run --project tests/RecycleList.Tests.csproj -c Release` 检查清单、品级、拼音排序、背包匹配、可恢复的悬浮框隐藏和批量出售归属/确认规则。测试不运行游戏。
 
