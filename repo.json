@@ -1,16 +1,16 @@
 [
   {
     "DownloadCount": 0,
-    "LastUpdate": 1793191929,
+    "LastUpdate": 1793697264,
     "IsTestingExclusive": false,
-    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/2e393f846bace1ed3e22d6dccc0fc68eedf08106/dist/RecycleKing-0.1.1.2.zip",
-    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/2e393f846bace1ed3e22d6dccc0fc68eedf08106/dist/RecycleKing-0.1.1.2.zip",
+    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/7612ca90f9c8bb7a8fb6dcfe8f64dfd82f596bc0/dist/RecycleKing-0.1.2.0.zip",
+    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/7612ca90f9c8bb7a8fb6dcfe8f64dfd82f596bc0/dist/RecycleKing-0.1.2.0.zip",
     "IsHide": false,
     "Author": "Momikk",
     "Name": "回收之王 RecycleKing",
     "InternalName": "RecycleKing",
-    "AssemblyVersion": "0.1.1.2",
-    "Description": "使用游戏原生 UI 管理回收物品清单，按拼音排序，NQ/HQ 视为同一物品。出售界面中背包显示“废品回收”，交易繁忙时暂时禁用，点击批量出售普通背包中的清单物品；再次点击可停止。清单通过插件设置或 /rking 打开。清单物品显示粉色遮罩与 X，优先于压价之王的蓝框；支持隐藏 AutoRetainer 军票悬浮框及显示稀有品品级。",
+    "AssemblyVersion": "0.1.2.0",
+    "Description": "使用游戏原生 UI 管理回收物品清单，按拼音排序，NQ/HQ 视为同一物品。出售界面中背包显示“废品回收”，交易繁忙时暂时禁用，点击批量出售普通背包中的清单物品；再次点击可停止。清单通过插件设置或 /rking 打开。清单物品显示粉色遮罩与 X，优先于压价之王的蓝框；支持隐藏 AutoRetainer 军票悬浮框及显示稀有品品级。在原生道具分解窗口点击“自动分解”，按序逐件处理点击时当前标签页列出的物品；再次点击停止，切换标签或列表变化时停止。",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/Momikk/RecycleKing",
     "Tags": [
@@ -25,7 +25,7 @@
     "LoadPriority": 0,
     "IconUrl": "https://raw.githubusercontent.com/Momikk/RecycleKing/main/images/icon.png",
     "Punchline": "管理回收清单，在出售界面批量出售背包废品。",
-    "Changelog": "版本 0.1.1.2\n·将“加入回收清单”移到右键菜单末尾。\nEnglish\n·Move Add to recycling list to the bottom of the context menu.",
+    "Changelog": "版本 0.1.2.0\n·增加“自动分解”，按序处理当前标签页物品。\n·列表变化或需手动确认时停止，不处理列表外物品。\n·游戏内流程待验证。\nEnglish\n·Add Auto Desynthesis for the current tab, in list order.\n·Stop on list changes or manual warnings; exclude unlisted items.\n·In-game behavior remains unverified.",
     "AcceptsFeedback": true
   }
 ]
