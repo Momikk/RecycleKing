@@ -1,15 +1,15 @@
 [
   {
     "DownloadCount": 0,
-    "LastUpdate": 1793701791,
+    "LastUpdate": 1793719868,
     "IsTestingExclusive": false,
-    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/e56c87ecf8288edf41ae303330cde7c43ebceec3/dist/RecycleKing-0.1.3.1.zip",
-    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/e56c87ecf8288edf41ae303330cde7c43ebceec3/dist/RecycleKing-0.1.3.1.zip",
+    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/a02622234ce3b2734e742996b98d8c0f4367ae8f/dist/RecycleKing-0.1.3.2.zip",
+    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/a02622234ce3b2734e742996b98d8c0f4367ae8f/dist/RecycleKing-0.1.3.2.zip",
     "IsHide": false,
     "Author": "Momikk",
     "Name": "回收之王 RecycleKing",
     "InternalName": "RecycleKing",
-    "AssemblyVersion": "0.1.3.1",
+    "AssemblyVersion": "0.1.3.2",
     "Description": "使用游戏原生 UI 管理回收物品清单，按拼音排序，NQ/HQ 视为同一物品。出售界面中背包显示“废品回收”，交易繁忙时暂时禁用，点击批量出售普通背包中的清单物品；再次点击可停止。清单通过插件设置或 /rking 打开。清单物品显示粉色遮罩与 X，优先于压价之王的蓝框；支持隐藏 AutoRetainer 军票悬浮框及显示稀有品品级。在原生道具分解窗口点击“自动分解”，按序逐件处理点击时当前标签页列出的物品；再次点击停止，切换标签或列表变化时停止。兵装库左下角“垃圾出库”将未登记任何装备套装的散件移入背包，保留套装引用物品，空间不足时停止。",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/Momikk/RecycleKing",
@@ -25,7 +25,7 @@
     "LoadPriority": 0,
     "IconUrl": "https://raw.githubusercontent.com/Momikk/RecycleKing/main/images/icon.png",
     "Punchline": "管理回收清单，在出售界面批量出售背包废品。",
-    "Changelog": "版本 0.1.3.1\n·修复自动分解完成首件后不继续的问题。\n·移除自动分解和垃圾出库的悬停提示。\nEnglish\n·Fix auto desynthesis stopping after the first item.\n·Remove hover tooltips from Auto Desynthesis and Garbage Out.",
+    "Changelog": "版本 0.1.3.2\n·修复连续分解时因处理状态未结束而中断的问题。\n·补充操作进度、原生报错及停止原因日志，可在 /xllog 查看。\nEnglish\n·Wait for item processing to finish before continuing desynthesis.\n·Log operation progress, native errors and stop reasons in /xllog.",
     "AcceptsFeedback": true
   }
 ]
