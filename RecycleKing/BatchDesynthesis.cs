@@ -31,6 +31,7 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
     private Phase phase;
     private bool ticking;
     private readonly DesynthesisReadiness readiness = new();
+    private readonly DesynthesisConfirmation confirmation = new();
     private readonly OperationTrace trace = new("自动分解");
     private bool waitingForIdle;
     private enum Phase { Ready, Opening, Submitted, Closing, Refreshing }
@@ -140,7 +141,7 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
         if (Addon("SelectYesno") != null || Addon("SalvageAutoDialog") != null || plugin.Sales.IsRunning || plugin.Armoury.IsRunning)
         { Stop("出现其他操作或确认窗口，已停止。"); return; }
         if (Environment.TickCount64 >= deadline)
-        { Stop(phase == Phase.Refreshing ? "当前列表与剩余计划不一致，已停止。" : "未能核对分解结果，已停止，不会重试该物品。"); return; }
+        { Stop(phase == Phase.Refreshing ? "当前列表与剩余计划不一致，已停止。" : phase == Phase.Opening ? "分解确认未就绪，已停止，请检查原生确认选项。" : "未能核对分解结果，已停止，不会重试该物品。"); return; }
 
         if (phase == Phase.Ready || phase == Phase.Refreshing)
         {
@@ -164,6 +165,7 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
             values[0] = new AtkValue { Type = AtkValueType.Int, Int = 12 };
             values[1] = new AtkValue { Type = AtkValueType.Int, Int = 0 };
             phase = Phase.Opening;
+            confirmation.Reset();
             deadline = Environment.TickCount64 + 10000;
             trace.Info("选中物品", Describe(current));
             agent->ReceiveEvent(&result, values, 2, 0);
@@ -194,6 +196,8 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
             { Stop("确认窗口与本次列表物品不一致，已停止。"); return; }
             // Inspect all typed checkbox slots; never assume a fixed checkbox index.
             // GuaranteeNQ is unrelated to bulk mode and is left as the user selected it.
+            var warningPresent = false;
+            var warningChecked = false;
             foreach (var check in dialog->Checkboxes)
             {
                 if (check.Type == SalvageDialogCheckboxType.BulkDesynth && check.IsCheckedCached)
@@ -201,14 +205,33 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
                 if (check.Checkbox == null) continue;
                 if (check.Type is < SalvageDialogCheckboxType.BulkDesynth or > SalvageDialogCheckboxType.GuaranteeNQ)
                 { Stop("分解确认选项无法识别，已停止。"); return; }
+                if (check.Type == SalvageDialogCheckboxType.Warning && check.Checkbox->OwnerNode != null
+                    && check.Checkbox->OwnerNode->AtkResNode.IsVisible())
+                {
+                    if (warningPresent) { Stop("分解警告选项重复，已停止。"); return; }
+                    warningPresent = true;
+                    warningChecked = check.IsCheckedCached && check.Checkbox->IsChecked;
+                }
                 if (check.Type == SalvageDialogCheckboxType.BulkDesynth && check.Checkbox->IsChecked)
                 { Stop("请取消原生整组分解选项后重试，避免处理列表外物品。"); return; }
             }
             var nativeButton = dialog->DesynthesizeButton;
             if (!HasBagRoom()) { Stop("背包需要至少三个空格，已停止。"); return; }
             if (!WaitForIdle()) return;
-            if (nativeButton == null || !nativeButton->IsEnabled)
-            { Stop("当前物品需要手动处理分解警告，已停止。"); return; }
+            var decision = confirmation.Evaluate(true, false, warningPresent, warningChecked,
+                nativeButton != null && nativeButton->IsEnabled);
+            if (decision == DesynthesisConfirmation.Decision.ConfirmWarning)
+            {
+                // Warning consent only, matching the native per-item checkbox callback.
+                // Ownership and the entire remaining tab were checked above. Never use bulk consent.
+                trace.Info("确认本次物品警告", Describe(head));
+                var consent = stackalloc AtkValue[2];
+                consent[0] = new AtkValue { Type = AtkValueType.Int, Int = 13 };
+                consent[1] = new AtkValue { Type = AtkValueType.Bool, Bool = true };
+                dialog->FireCallback(2, consent, true);
+                return; // Observe native checkbox and enabled button on a later frame.
+            }
+            if (decision != DesynthesisConfirmation.Decision.Submit) return;
             phase = Phase.Submitted; // Set ownership before the synchronous native callback.
             deadline = Environment.TickCount64 + 20000;
             readiness.Reset();

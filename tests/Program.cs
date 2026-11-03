@@ -250,6 +250,21 @@ Check(!idle.CanProceed(1, false, false, 0), "clock reversal never grants readine
 Check(idle.CanProceed(201, false, false, 0), "fresh monotonic idle after clock reversal works");
 Console.WriteLine($"Passed {checks} total checks including desynthesis busy-state timing regression.");
 
+var consent = new DesynthesisConfirmation();
+Check(consent.Evaluate(false, false, true, false, false) == DesynthesisConfirmation.Decision.Reject, "foreign confirmation cannot authorize a warning");
+Check(consent.Evaluate(true, true, true, false, false) == DesynthesisConfirmation.Decision.Reject, "bulk mode always rejected even with a warning");
+Check(consent.Evaluate(true, false, true, false, false) == DesynthesisConfirmation.Decision.ConfirmWarning, "captured item warning can be acknowledged once");
+Check(consent.Evaluate(true, false, true, false, true) == DesynthesisConfirmation.Decision.Wait, "enabled button cannot bypass missing warning acknowledgement");
+Check(consent.Evaluate(true, false, true, false, false) == DesynthesisConfirmation.Decision.Wait, "missing native acknowledgement never repeats consent callback");
+Check(consent.Evaluate(true, false, true, true, false) == DesynthesisConfirmation.Decision.Wait, "checked warning waits for native button readiness");
+Check(consent.Evaluate(true, false, true, true, true) == DesynthesisConfirmation.Decision.Submit, "only checked warning and native enabled button allow submission");
+Check(consent.Evaluate(true, true, true, true, true) == DesynthesisConfirmation.Decision.Reject, "bulk toggled after consent still rejects");
+consent.Reset();
+Check(consent.Evaluate(true, false, false, false, false) == DesynthesisConfirmation.Decision.Wait, "ordinary dialog can wait for native transition without a warning");
+Check(consent.Evaluate(true, false, false, false, true) == DesynthesisConfirmation.Decision.Submit, "ordinary item leaves checkbox settings alone");
+Check(consent.Evaluate(true, false, true, false, false) == DesynthesisConfirmation.Decision.ConfirmWarning, "new item has independent warning consent");
+Console.WriteLine($"Passed {checks} total checks including scoped warning consent regression.");
+
 sealed class FakeOverlay
 {
     public bool IsOpen { get; set; }
