@@ -1,6 +1,6 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
   <PropertyGroup>
-    <Version>0.1.3.0</Version>
+    <Version>0.1.3.1</Version>
     <Author>Momikk</Author>
     <Name>回收之王 RecycleKing</Name>
     <RepoUrl>https://github.com/Momikk/RecycleKing</RepoUrl>
@@ -12,7 +12,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <CanUnloadAsync>true</CanUnloadAsync>
-    <Changelog>版本 0.1.3.0&#10;·兵装库增加“垃圾出库”，将未登记套装的散件移入背包。&#10;·修正自动分解列表的物品识别。&#10;·实际移动与分解流程待验证。&#10;English&#10;·Add armoury cleanup to move gear not used by saved gearsets into bags.&#10;·Correct item matching in the desynthesis list.&#10;·Actual movement and desynthesis remain unverified.</Changelog>
+    <Changelog>版本 0.1.3.1&#10;·修复自动分解完成首件后不继续的问题。&#10;·移除自动分解和垃圾出库的悬停提示。&#10;English&#10;·Fix auto desynthesis stopping after the first item.&#10;·Remove hover tooltips from Auto Desynthesis and Garbage Out.</Changelog>
     <PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
   </PropertyGroup>
   <ItemGroup>

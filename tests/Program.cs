@@ -220,6 +220,17 @@ Check(!ArmouryMoveRules.Arrived(a, a with { State = "other materia" }), "destina
 Check(!ArmouryMoveRules.Arrived(a, a with { Quantity = 2 }), "destination quantity mismatch rejected");
 Console.WriteLine($"Passed {checks} total checks including native list matching and saved-gearset move guards.");
 
+Check(DesynthesisScope.OwnResult(37400, 37400, 37400), "ordinary visible result accepted without legacy result-open flag");
+Check(!DesynthesisScope.OwnResult(37400, 20713, 37400), "stale native result source rejected");
+Check(!DesynthesisScope.OwnResult(37400, 37400, 20713), "stale agent source rejected");
+Check(!DesynthesisScope.OwnResult(0, 0, 0), "empty result is not success");
+Check(DesynthesisScope.OwnResult(42, 1000042, 42), "HQ result normalization preserved");
+var resultPlan = new DesynthesisScope(1, new[] { a, b with { Quantity = 1 } });
+Check(DesynthesisScope.OwnResult(resultPlan.Head.Id, a.Id, a.Id) && resultPlan.ConsumeOne(a.Id, null), "first native result acknowledges only captured first item");
+Check(resultPlan.Head.Id == b.Id && resultPlan.Matches(1, 1, new[] { b with { Quantity = 1 } }), "after closing first result remaining tab matches next captured item");
+Check(DesynthesisScope.OwnResult(resultPlan.Head.Id, b.Id, b.Id) && resultPlan.ConsumeOne(b.Id, null) && resultPlan.Empty, "second captured item completes without reusing old result");
+Console.WriteLine($"Passed {checks} total checks including single-result acknowledgement regression.");
+
 sealed class FakeOverlay
 {
     public bool IsOpen { get; set; }

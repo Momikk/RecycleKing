@@ -31,7 +31,6 @@ internal sealed unsafe class ArmouryCleanup : IDisposable
     private int moved;
     private bool pending;
     private bool updating;
-    private string status = "将兵装库中未被任何已保存装备套装引用的物品移入普通背包。";
     internal bool IsRunning { get; private set; }
 
     internal ArmouryCleanup(Plugin plugin)
@@ -77,7 +76,6 @@ internal sealed unsafe class ArmouryCleanup : IDisposable
                     button.IsVisible = addon->IsVisible;
                     button.IsEnabled = IsRunning || Available();
                     button.String = IsRunning ? "停止出库" : "垃圾出库";
-                    button.TextTooltip = status + "\n遍历全部兵装库分类，按 NQ/HQ 分别识别套装引用；空间不足时停止。";
                 }
             }
             if (IsRunning) Advance(addon);
@@ -111,7 +109,6 @@ internal sealed unsafe class ArmouryCleanup : IDisposable
             pending = false;
             stableAfter = Environment.TickCount64 + 200;
             IsRunning = true;
-            status = $"准备移出 {queue.Count} 件散件，再次点击可停止。";
         }
         catch (Exception error)
         {
@@ -138,7 +135,6 @@ internal sealed unsafe class ArmouryCleanup : IDisposable
                 moved++;
                 pending = false;
                 queue.Dequeue();
-                status = $"已移入背包 {moved} 件，剩余 {queue.Count} 件。";
                 return;
             }
             if (source != null && source != current || target != null && !ArmouryMoveRules.Arrived(current, target.Value))
@@ -210,7 +206,6 @@ internal sealed unsafe class ArmouryCleanup : IDisposable
 
     private void Notify(string text)
     {
-        status = text;
         Plugin.Chat.Print($"[回收之王] {text}");
     }
 

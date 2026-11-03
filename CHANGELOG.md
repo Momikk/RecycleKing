@@ -2,6 +2,11 @@
 
 [中文更新记录](CHANGELOG.zh-CN.md)
 
+## 0.1.3.1 — 2026-11-03
+
+- Fix auto desynthesis getting stuck at the first result window instead of continuing with the next item.
+- Remove hover tooltips from Auto Desynthesis and Garbage Out.
+
 ## 0.1.3.0 — 2026-11-03
 
 - Add Garbage Out at the bottom-left of the armoury chest to move items not used by any saved gearset into normal bags, across all categories. Stop when bags are full; click again to stop.

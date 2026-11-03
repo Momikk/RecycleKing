@@ -31,7 +31,6 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
     private bool ticking;
     private enum Phase { Ready, Opening, Submitted, Closing, Refreshing }
     internal bool IsRunning => scope != null;
-    private string status = "按当前标签页列表顺序逐件分解，包含 HQ；再次点击可停止。";
 
     internal BatchDesynthesis(Plugin plugin)
     {
@@ -76,7 +75,6 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
                     button.IsVisible = selector->IsVisible;
                     button.String = IsRunning ? "停止分解" : "自动分解";
                     button.IsEnabled = IsRunning || (!plugin.Sales.IsRunning && !plugin.Armoury.IsRunning && !HasConfirmation());
-                    button.TextTooltip = status + "\n只处理点击时本页列出的物品，不切换标签；已提交的分解仍可能完成。";
                 }
             }
             if (IsRunning) Advance(selector);
@@ -110,7 +108,6 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
             phase = Phase.Ready;
             deadline = Environment.TickCount64 + 10000;
             scope = plan;
-            status = $"准备按序分解当前标签页的 {items.Count} 项物品。";
         }
         catch (Exception error)
         {
@@ -160,7 +157,6 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
             values[1] = new AtkValue { Type = AtkValueType.Int, Int = 0 };
             phase = Phase.Opening;
             deadline = Environment.TickCount64 + 10000;
-            status = $"正在分解：{current.Name}；已完成 {completed} 件。";
             agent->ReceiveEvent(&result, values, 2, 0);
             return;
         }
@@ -168,7 +164,7 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
         if (phase == Phase.Closing)
         {
             if (!InventoryMatches(plan.Remaining, 0)) { Stop("待分解物品已变化，已停止。"); return; }
-            if (Addon("SalvageResult") == null && !agent->IsSalvageResultAddonOpen)
+            if (Addon("SalvageResult") == null)
             {
                 phase = Phase.Refreshing;
                 deadline = Environment.TickCount64 + 5000;
@@ -214,8 +210,12 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
         if (phase == Phase.Submitted)
         {
             var result = Addon("SalvageResult");
-            if (result == null || !agent->IsSalvageResultAddonOpen) return;
-            if (RecycleList.BaseId(agent->DesynthItemId) != head.Id)
+            if (result == null) return;
+            // Normal single-item results leave AgentSalvage.IsSalvageResultAddonOpen false.
+            // The visible result's first numeric value is the source item ID.
+            if (result->AtkValues == null || result->AtkValuesCount < 1
+                || result->AtkValues[0].Type != AtkValueType.UInt
+                || !DesynthesisScope.OwnResult(head.Id, result->AtkValues[0].UInt, agent->DesynthItemId))
             { Stop("分解结果物品不一致，已停止。"); return; }
             if (!TryReadSlot(head.Inventory, head.Slot, out var after))
             { Stop("背包状态不可用，已停止。"); return; }
@@ -308,7 +308,6 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
 
     private void Notify(string message)
     {
-        status = message;
         Plugin.Chat.Print($"[回收之王] {message}");
     }
 

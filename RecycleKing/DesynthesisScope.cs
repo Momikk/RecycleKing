@@ -36,6 +36,10 @@ internal sealed class DesynthesisScope
     internal static bool OwnSelection(DesynthItem expected, DesynthItem selected)
         => SameIdentity(expected, selected) && selected.Quantity > 0 && selected.Quantity <= expected.Quantity;
 
+    internal static bool OwnResult(uint expected, uint resultSource, uint agentSource)
+        => expected is > 0 and < 500_000
+            && RecycleList.BaseId(resultSource) == expected && RecycleList.BaseId(agentSource) == expected;
+
     // Only call after the native result identifies the submitted item. An output
     // material may already occupy the consumed item's former slot.
     internal bool ConsumeOne(uint resultItemId, DesynthItem? after)
