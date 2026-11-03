@@ -22,6 +22,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
     [PluginService] internal static ICondition Conditions { get; private set; } = null!;
     [PluginService] internal static IClientState ClientState { get; private set; } = null!;
     [PluginService] internal static IChatGui Chat { get; private set; } = null!;
+    [PluginService] internal static IToastGui Toasts { get; private set; } = null!;
 
     internal Configuration Config { get; }
     internal int Revision { get; private set; }
@@ -69,6 +70,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
             ContextMenu.OnMenuOpened += OnMenuOpened;
             PluginInterface.UiBuilder.OpenMainUi += OpenList;
             PluginInterface.UiBuilder.OpenConfigUi += OpenList;
+            Log.Information("RecycleKing {Version} 已加载；操作日志可在 /xllog 按 RecycleKing 筛选。", PluginInterface.Manifest.AssemblyVersion);
         });
     }
 

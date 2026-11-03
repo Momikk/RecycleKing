@@ -2,6 +2,11 @@
 
 [中文更新记录](CHANGELOG.zh-CN.md)
 
+## 0.1.3.2 — 2026-11-03
+
+- Wait for item processing to finish before continuing desynthesis.
+- Log operation progress, native errors and stop reasons in `/xllog`.
+
 ## 0.1.3.1 — 2026-11-03
 
 - Fix auto desynthesis getting stuck at the first result window instead of continuing with the next item.

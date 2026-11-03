@@ -23,6 +23,7 @@ internal sealed unsafe class BatchSale : IDisposable
     private readonly BatchPump pump = new();
     private int progress;
     private readonly Plugin plugin;
+    private readonly OperationTrace trace = new("废品回收");
     private readonly Queue<SaleSlot> queue = [];
     private readonly HashSet<string> confirmations = [];
     private HashSet<uint> list = [];
@@ -71,6 +72,7 @@ internal sealed unsafe class BatchSale : IDisposable
         phase = 0;
         deadline = Environment.TickCount64 + 5000;
         Status = $"准备回收 {queue.Count} 组物品，再次点击可停止。";
+        trace.Start($"stacks={queue.Count} units={queue.Sum(x => (long)x.Quantity)}");
     }
 
     private void Tick(IFramework framework) => Pump();
@@ -107,6 +109,7 @@ internal sealed unsafe class BatchSale : IDisposable
                 return;
             }
             current = queue.Dequeue();
+            trace.Info("准备出售", $"item={current.Id} page={current.Page} slot={current.Slot} quantity={current.Quantity}");
             if (!Unchanged(inventory)) { Stop("待出售物品的位置、数量或状态已变化，已停止。"); return; }
             gilBefore = Gil(context);
             if (!HasGilRoom(current, context)) { Stop("金币空间不足，已停止。"); return; }
@@ -149,6 +152,7 @@ internal sealed unsafe class BatchSale : IDisposable
         {
             soldStacks++;
             soldItems += current.Quantity;
+            trace.Info("确认出售成功", $"item={current.Id} quantity={current.Quantity} stacks={soldStacks} units={soldItems}");
             phase = 0;
             deadline = now + 5000;
             progress++;
@@ -360,12 +364,14 @@ internal sealed unsafe class BatchSale : IDisposable
     private void Notify(string text)
     {
         Status = text;
+        trace.Info("提示", text);
         Plugin.Chat.Print($"[回收之王] {text}");
     }
 
     private void Stop(string reason)
     {
         if (!IsRunning) return;
+        trace.Info("停止", $"reason={reason} phase={phase} stacks={soldStacks} units={soldItems} remaining={queue.Count}");
         IsRunning = false;
         queue.Clear();
         Notify($"{reason} 已确认出售 {soldStacks} 组，共 {soldItems} 件。");

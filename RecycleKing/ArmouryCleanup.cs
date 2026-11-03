@@ -16,6 +16,7 @@ internal sealed unsafe class ArmouryCleanup : IDisposable
 {
     private const string AddonName = "ArmouryBoard";
     private readonly Plugin plugin;
+    private readonly OperationTrace trace = new("垃圾出库");
     private readonly Queue<DesynthItem> queue = [];
     private TextButtonNode? button;
     private nint addonAddress;
@@ -109,6 +110,7 @@ internal sealed unsafe class ArmouryCleanup : IDisposable
             pending = false;
             stableAfter = Environment.TickCount64 + 200;
             IsRunning = true;
+            trace.Start($"items={queue.Count} protectedIdentities={registered.Count}");
         }
         catch (Exception error)
         {
@@ -133,6 +135,7 @@ internal sealed unsafe class ArmouryCleanup : IDisposable
             if (source == null && target is { } arrived && ArmouryMoveRules.Arrived(current, arrived))
             {
                 moved++;
+                trace.Info("确认移入背包", $"item={current.Id} targetInventory={targetInventory} targetSlot={targetSlot} moved={moved}");
                 pending = false;
                 queue.Dequeue();
                 return;
@@ -153,6 +156,7 @@ internal sealed unsafe class ArmouryCleanup : IDisposable
         current = queue.Peek();
         pending = true;
         deadline = Environment.TickCount64 + 8000;
+        trace.Info("提交移动", $"item={current.Id} inventory={current.Inventory} slot={current.Slot} targetInventory={targetInventory} targetSlot={targetSlot}");
         manager->MoveItemSlot((InventoryType)current.Inventory, (ushort)current.Slot,
             (InventoryType)targetInventory, (ushort)targetSlot, true);
     }
@@ -206,12 +210,14 @@ internal sealed unsafe class ArmouryCleanup : IDisposable
 
     private void Notify(string text)
     {
+        trace.Info("提示", text);
         Plugin.Chat.Print($"[回收之王] {text}");
     }
 
     private void Stop(string reason)
     {
         if (!IsRunning) return;
+        trace.Info("停止", $"reason={reason} pending={pending} moved={moved} remaining={queue.Count}");
         IsRunning = false;
         queue.Clear();
         Notify($"{reason} 已确认移入背包 {moved} 件。");

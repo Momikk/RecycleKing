@@ -16,5 +16,6 @@
     <Compile Include="../RecycleKing/OverlayOcclusion.cs" Link="OverlayOcclusion.cs" />
     <Compile Include="../RecycleKing/DesynthesisScope.cs" Link="DesynthesisScope.cs" />
     <Compile Include="../RecycleKing/ArmouryMoveRules.cs" Link="ArmouryMoveRules.cs" />
+    <Compile Include="../RecycleKing/DesynthesisReadiness.cs" Link="DesynthesisReadiness.cs" />
   </ItemGroup>
 </Project>

@@ -9,6 +9,7 @@ using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Nodes;
+using Dalamud.Game.Text.SeStringHandling;
 
 namespace RecycleKing;
 
@@ -29,6 +30,9 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
     private int completed;
     private Phase phase;
     private bool ticking;
+    private readonly DesynthesisReadiness readiness = new();
+    private readonly OperationTrace trace = new("自动分解");
+    private bool waitingForIdle;
     private enum Phase { Ready, Opening, Submitted, Closing, Refreshing }
     internal bool IsRunning => scope != null;
 
@@ -37,6 +41,7 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
         this.plugin = plugin;
         Plugin.Addons.RegisterListener(AddonEvent.PreFinalize, SelectorName, FinalizeSelector);
         Plugin.Framework.Update += Update;
+        Plugin.Toasts.ErrorToast += OnErrorToast;
     }
 
     private static AtkUnitBase* Addon(string name, bool visible = true)
@@ -90,7 +95,7 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
 
     private void Toggle()
     {
-        if (IsRunning) { Stop("已停止；已提交的分解仍可能完成。"); return; }
+        if (IsRunning) { Stop("已停止；已提交的分解仍可能完成。", true); return; }
         try
         {
             var selector = (AddonSalvageItemSelector*)Addon(SelectorName);
@@ -108,6 +113,9 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
             phase = Phase.Ready;
             deadline = Environment.TickCount64 + 10000;
             scope = plan;
+            readiness.Reset();
+            waitingForIdle = false;
+            trace.Start($"category={plan.Category} rows={items.Count} units={items.Sum(x => (long)x.Quantity)}");
         }
         catch (Exception error)
         {
@@ -144,8 +152,8 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
                 if (phase == Phase.Ready) Stop("当前列表或物品状态已变化，已停止。");
                 return;
             }
-            if (plan.Empty) { Stop("当前标签页已分解完成。"); return; }
-            if (Plugin.Conditions[ConditionFlag.OccupiedInEvent]) return;
+            if (plan.Empty) { Stop("当前标签页已分解完成。", true); return; }
+            if (!WaitForIdle()) return;
             if (!HasBagRoom()) { Stop("背包需要至少三个空格，已停止。"); return; }
             var current = plan.Head;
             if (!InventoryMatches(plan.Remaining, 0)) { Stop("待分解物品已变化，已停止。"); return; }
@@ -157,6 +165,7 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
             values[1] = new AtkValue { Type = AtkValueType.Int, Int = 0 };
             phase = Phase.Opening;
             deadline = Environment.TickCount64 + 10000;
+            trace.Info("选中物品", Describe(current));
             agent->ReceiveEvent(&result, values, 2, 0);
             return;
         }
@@ -168,6 +177,7 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
             {
                 phase = Phase.Refreshing;
                 deadline = Environment.TickCount64 + 5000;
+                trace.Info("结果窗口已关闭", $"remaining={plan.Remaining.Count}; 等待列表刷新与处理状态结束");
             }
             return;
         }
@@ -196,10 +206,14 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
             }
             var nativeButton = dialog->DesynthesizeButton;
             if (!HasBagRoom()) { Stop("背包需要至少三个空格，已停止。"); return; }
+            if (!WaitForIdle()) return;
             if (nativeButton == null || !nativeButton->IsEnabled)
             { Stop("当前物品需要手动处理分解警告，已停止。"); return; }
             phase = Phase.Submitted; // Set ownership before the synchronous native callback.
             deadline = Environment.TickCount64 + 20000;
+            readiness.Reset();
+            waitingForIdle = false;
+            trace.Info("提交分解", Describe(head));
             var args = stackalloc AtkValue[2];
             args[0] = new AtkValue { Type = AtkValueType.Int, Int = 0 };
             args[1] = new AtkValue { Type = AtkValueType.Int, Int = 0 };
@@ -222,14 +236,48 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
             if (after == head) return; // Acknowledgement can precede the inventory update.
             if (!plan.ConsumeOne(agent->DesynthItemId, after)) { Stop("本次物品数量变化不符，已停止。"); return; }
             completed++;
+            trace.Info("确认分解成功", $"{Describe(head)} completed={completed} remaining={plan.Remaining.Count}");
             phase = Phase.Closing;
             deadline = Environment.TickCount64 + 10000;
             // Dispatch the result window's own close-button event, not a guessed callback ID.
             var close = result->GetComponentButtonById(15);
+            trace.Info("关闭本次结果", $"source={head.Id} resultAddonId={result->Id}");
             if (!ClickNativeButton(result, close)) Stop("无法关闭本次分解结果，已停止。");
             return;
         }
 
+    }
+
+    private bool WaitForIdle()
+    {
+        var occupied = Plugin.Conditions[ConditionFlag.Occupied39] || Plugin.Conditions[ConditionFlag.OccupiedInEvent]
+            || Plugin.Conditions[ConditionFlag.Crafting] || Plugin.Conditions[ConditionFlag.ExecutingCraftingAction];
+        var casting = Plugin.Conditions[ConditionFlag.Casting] || Plugin.Conditions[ConditionFlag.Casting87];
+        var action = ActionManager.Instance();
+        var animationLock = action == null ? float.NaN : action->AnimationLock;
+        if (!readiness.CanProceed(Environment.TickCount64, occupied, casting, animationLock))
+        {
+            if (!waitingForIdle)
+            {
+                trace.Info("等待可操作状态", $"phase={phase} occupied39={Plugin.Conditions[ConditionFlag.Occupied39]} occupied={occupied} casting={casting} animationLock={animationLock:F3}");
+                waitingForIdle = true;
+            }
+            return false;
+        }
+        if (waitingForIdle) trace.Info("处理状态已解除", $"phase={phase} idleMs>={DesynthesisReadiness.StableIdleMilliseconds}");
+        waitingForIdle = false;
+        return true;
+    }
+
+    private static string Describe(DesynthItem item)
+        => $"item={item.Id} name={item.Name} inventory={item.Inventory} slot={item.Slot} quantity={item.Quantity} flags={item.Flags}";
+
+    private void OnErrorToast(ref SeString message, ref bool handled)
+    {
+        if (!IsRunning) return;
+        var item = scope!.Empty ? "none" : Describe(scope.Head);
+        trace.Warning("原生错误提示", $"phase={phase} {item} occupied39={Plugin.Conditions[ConditionFlag.Occupied39]} message={message.TextValue}");
+        // Observe only: unrelated error toasts must not approve/retry any item.
     }
 
     private static bool TryList(AddonSalvageItemSelector* selector, AgentSalvage* agent, out List<DesynthItem> items)
@@ -308,12 +356,15 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
 
     private void Notify(string message)
     {
+        trace.Info("提示", message);
         Plugin.Chat.Print($"[回收之王] {message}");
     }
 
-    private void Stop(string reason)
+    private void Stop(string reason, bool normal = false)
     {
         if (!IsRunning) return;
+        var details = $"reason={reason} phase={phase} completed={completed} remaining={scope!.Remaining.Count} occupied39={Plugin.Conditions[ConditionFlag.Occupied39]}";
+        if (normal) trace.Info("停止", details); else trace.Warning("停止", details);
         scope = null;
         Notify($"{reason} 已确认分解 {completed} 件。");
     }
@@ -332,6 +383,7 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
     {
         Stop("插件已关闭，已停止；已提交的分解仍可能完成。");
         Plugin.Framework.Update -= Update;
+        Plugin.Toasts.ErrorToast -= OnErrorToast;
         Plugin.Addons.UnregisterListener(AddonEvent.PreFinalize, SelectorName, FinalizeSelector);
         button?.Dispose();
         button = null;

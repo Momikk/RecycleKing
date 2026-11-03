@@ -231,6 +231,25 @@ Check(resultPlan.Head.Id == b.Id && resultPlan.Matches(1, 1, new[] { b with { Qu
 Check(DesynthesisScope.OwnResult(resultPlan.Head.Id, b.Id, b.Id) && resultPlan.ConsumeOne(b.Id, null) && resultPlan.Empty, "second captured item completes without reusing old result");
 Console.WriteLine($"Passed {checks} total checks including single-result acknowledgement regression.");
 
+var idle = new DesynthesisReadiness();
+Check(!idle.CanProceed(36704, true, false, 0), "visible success must still wait while Occupied39 is true");
+Check(!idle.CanProceed(36726, false, false, 0), "clearing Occupied39 does not immediately submit another action");
+Check(!idle.CanProceed(36925, false, false, 0), "requires full stable idle interval");
+Check(idle.CanProceed(36926, false, false, 0), "continues when native processing has ended and idle is stable");
+Check(!idle.CanProceed(36927, true, false, 0), "busy reentry invalidates prior idle state");
+Check(!idle.CanProceed(36940, false, false, 0), "brief false busy flag cannot reuse old idle timestamp");
+Check(idle.CanProceed(37140, false, false, 0), "normal ready state resumes after transient busy");
+Check(!idle.CanProceed(37141, false, true, 0), "casting blocks selection and confirmation");
+Check(!idle.CanProceed(37142, false, false, 0.1f), "animation lock also blocks next action");
+Check(!idle.CanProceed(37143, false, false, float.NaN), "unavailable action state fails closed");
+Check(!idle.CanProceed(37144, false, false, float.PositiveInfinity), "invalid animation lock rejected");
+Check(!idle.CanProceed(37200, false, false, 0) && idle.CanProceed(37400, false, false, 0), "idle resumes after unavailable state");
+idle.Reset();
+Check(!idle.CanProceed(37401, false, false, 0), "new submitted item does not inherit readiness from prior item");
+Check(!idle.CanProceed(1, false, false, 0), "clock reversal never grants readiness");
+Check(idle.CanProceed(201, false, false, 0), "fresh monotonic idle after clock reversal works");
+Console.WriteLine($"Passed {checks} total checks including desynthesis busy-state timing regression.");
+
 sealed class FakeOverlay
 {
     public bool IsOpen { get; set; }
