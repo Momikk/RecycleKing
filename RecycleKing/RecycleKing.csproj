@@ -1,18 +1,18 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
   <PropertyGroup>
-    <Version>0.1.1.2</Version>
+    <Version>0.1.2.0</Version>
     <Author>Momikk</Author>
     <Name>回收之王 RecycleKing</Name>
     <RepoUrl>https://github.com/Momikk/RecycleKing</RepoUrl>
     <IconUrl>https://raw.githubusercontent.com/Momikk/RecycleKing/main/images/icon.png</IconUrl>
     <Punchline>管理回收清单，在出售界面批量出售背包废品。</Punchline>
-    <Description>使用游戏原生 UI 管理回收物品清单，按拼音排序，NQ/HQ 视为同一物品。出售界面中背包显示“废品回收”，交易繁忙时暂时禁用，点击批量出售普通背包中的清单物品；再次点击可停止。清单通过插件设置或 /rking 打开。清单物品显示粉色遮罩与 X，优先于压价之王的蓝框；支持隐藏 AutoRetainer 军票悬浮框及显示稀有品品级。</Description>
+    <Description>使用游戏原生 UI 管理回收物品清单，按拼音排序，NQ/HQ 视为同一物品。出售界面中背包显示“废品回收”，交易繁忙时暂时禁用，点击批量出售普通背包中的清单物品；再次点击可停止。清单通过插件设置或 /rking 打开。清单物品显示粉色遮罩与 X，优先于压价之王的蓝框；支持隐藏 AutoRetainer 军票悬浮框及显示稀有品品级。在原生道具分解窗口点击“自动分解”，按序逐件处理点击时当前标签页列出的物品；再次点击停止，切换标签或列表变化时停止。</Description>
     <Tags>inventory;recycle;list</Tags>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <CanUnloadAsync>true</CanUnloadAsync>
-    <Changelog>版本 0.1.1.2&#10;·将“加入回收清单”移到右键菜单末尾。&#10;English&#10;·Move Add to recycling list to the bottom of the context menu.</Changelog>
+    <Changelog>版本 0.1.2.0&#10;·增加“自动分解”，按序处理当前标签页物品。&#10;·列表变化或需手动确认时停止，不处理列表外物品。&#10;·游戏内流程待验证。&#10;English&#10;·Add Auto Desynthesis for the current tab, in list order.&#10;·Stop on list changes or manual warnings; exclude unlisted items.&#10;·In-game behavior remains unverified.</Changelog>
     <PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
   </PropertyGroup>
   <ItemGroup>

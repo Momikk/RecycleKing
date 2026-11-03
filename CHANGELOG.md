@@ -2,6 +2,12 @@
 
 [中文更新记录](CHANGELOG.zh-CN.md)
 
+## 0.1.2.0 — 2026-11-03
+
+- Add a native Auto Desynthesis button to process items listed in the current tab at the time of clicking, one at a time in list order. Click again to stop.
+- Stop on tab or list changes and manual warnings; exclude unlisted items. Preserve the normal-quality results option and never enable native bulk desynthesis.
+- In-game behavior remains unverified. Submitted desynthesis may finish after stopping.
+
 ## 0.1.1.2 — 2026-10-28
 
 - Move Add to recycling list to the bottom of the context menu.

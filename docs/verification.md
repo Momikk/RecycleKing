@@ -1,5 +1,15 @@
 # 验收记录
 
+## 0.1.2.0 — 2026-11-03
+
+新增原生分解列表右上角按钮。开始时同时核对按名称获取的 SalvageItemSelector、AgentSalvage 的类别、完整列表数量、每行库存位置/数量、Excel 图标与实际库存；不解引用列表 CString 或 Utf8String。只快照该标签页实际列出的物品，保留顺序、槽位、品质、数量、耐久、精炼、制作者、幻化、魔晶石及染色等状态。每次提交前要求整个原生列表与剩余计划一致；确认窗口只接受本次选中物品，原生整组分解的缓存状态或实时状态开启即停止，保留 GuaranteeNQ 品质选择，原生按钮禁用时停下让用户处理警告。
+
+通过原生分解列表的选中事件打开确认，并调用原生确认；不直接提交网络包。每笔操作等待本次 SalvageResult、对应源物品 ID 和库存恰好减少一件，再派发结果窗口自身关闭按钮事件，待列表刷新后继续。不会把新物品加入计划；窗口/角色/区域/标签改变、其他待处理库存改变、范围外新列表项、结果异常及超时均停止，不重试已提交的项目。批量出售与分解互斥。结束、卸载或窗口释放时解除队列和节点，已提交操作仍可能完成。
+
+121 项离线检查通过，其中 34 项新增检查覆盖类别不一致、列表增减/重排、槽位移动、HQ/状态替换、确认归属、错误结果 ID、单件确认与整组异常减少、数量逐一递减、输出占用旧槽以及最终空列表。检查验证范围规则，不模拟或宣称验证游戏时序。
+
+依据当前安装 API 15 程序集编译。公开结构参考：[分解确认选项](https://github.com/aers/FFXIVClientStructs/blob/main/FFXIVClientStructs/FFXIV/Client/UI/AddonSalvageDialog.cs)、[原生列表](https://github.com/aers/FFXIVClientStructs/blob/main/FFXIVClientStructs/FFXIV/Client/UI/AddonSalvageItemSelector.cs)、[分解 Agent](https://github.com/aers/FFXIVClientStructs/blob/main/FFXIVClientStructs/FFXIV/Client/UI/Agent/AgentSalvage.cs)。本次未调用游戏内调试工具、未重载插件、未执行分解；按钮位置、列表字段含义、确认/结果时序、叠放物品及各标签页仍需游戏内验证。遇到无法核对状态时停止，不能把离线通过当成游戏内验收。
+
 ## 0.1.1.2 — 2026-10-28
 
 将“加入回收清单”的 Dalamud 菜单 Priority 设为 int.MaxValue。上游 ContextMenu.SetupGenericMenu 使用 Priority 升序排列，非负值位于原生项后，因此本项排在默认及较低数值插件项之后。未增加钩子或修改其他插件菜单；粉色 K、重复物品禁用和点击登记逻辑不变。其他插件若使用相同最大值，其相对次序仍由注册顺序决定；菜单条目超过 Dalamud 上限时可能进入更多菜单。

@@ -26,6 +26,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
     internal Configuration Config { get; }
     internal int Revision { get; private set; }
     internal BatchSale Sales { get; private set; } = null!;
+    internal BatchDesynthesis Desynthesis { get; private set; } = null!;
     private NativeListWindow? window;
     private InventoryButton? inventoryButton;
     private ExpertDeliveryLevels? deliveryLevels;
@@ -54,6 +55,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
                 InternalName = "RecycleKingList", Title = "回收之王", Size = new(510, 530),
             };
             Sales = new BatchSale(this);
+            Desynthesis = new BatchDesynthesis(this);
             inventoryButton = new InventoryButton(this);
             deliveryLevels = new ExpertDeliveryLevels();
             overlayHider = new AutoRetainerOverlayHider(this);
@@ -135,6 +137,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
             foreach (var command in CommandNames) Commands.RemoveHandler(command);
             window?.StopPendingOpen();
             Sales?.Dispose();
+            Desynthesis?.Dispose();
             inventoryButton?.Dispose();
             deliveryLevels?.Dispose();
         });

@@ -150,6 +150,50 @@ Check(OverlayOcclusion.Covered(new(new(150, 150), new(210, 210)), new[] { new Ov
 Check(!new OverlayBounds(new(float.NaN, 0), new(10, 10)).Valid && !new OverlayBounds(new(10, 10), new(0, 0)).Valid, "invalid native bounds rejected");
 Console.WriteLine($"Passed {checks} total checks including tooltip occlusion.");
 
+var a = new DesynthItem(0, 2, 20713, 1, 0, "condition:30000", "围墙");
+var b = new DesynthItem(1, 3, 42, 3, 1, "materia:1", "装备");
+var plan = new DesynthesisScope(1, new[] { a, b });
+Check(plan.Matches(1, 1, new[] { a, b }), "native tab agrees with finite plan");
+Check(!plan.Matches(0, 1, new[] { a, b }) && !plan.Matches(1, 0, new[] { a, b }), "either tab changing blocks submission");
+Check(!plan.Matches(1, 1, new[] { b, a }), "reordering cannot silently change processing order");
+Check(!plan.Matches(1, 1, new[] { a, b, a with { Slot = 8 } }), "newly listed item never joins plan");
+Check(!plan.Matches(1, 1, new[] { b }), "manual removal cannot silently shrink plan");
+Check(!plan.Matches(1, 1, new[] { a with { Slot = 9 }, b }), "moved item rejected");
+Check(!plan.Matches(1, 1, new[] { a, b with { Quantity = 4 } }), "received quantity cannot expand plan");
+Check(!plan.Matches(1, 1, new[] { a, b with { Flags = 0 } }), "HQ replacement rejected");
+Check(!plan.Matches(1, 1, new[] { a, b with { State = "different materia" } }), "same-ID equipment state replacement rejected");
+Check(DesynthesisScope.OwnSelection(b, b with { Quantity = 1 }), "single-item confirmation can represent stack");
+Check(!DesynthesisScope.OwnSelection(b, b with { Quantity = 4 }), "confirmation cannot expand captured quantity");
+Check(!DesynthesisScope.OwnSelection(b, b with { Inventory = 2 }), "same item in different inventory is not owned");
+Check(!DesynthesisScope.OwnSelection(b, b with { Slot = 7 }), "same item in different slot is not owned");
+Check(!DesynthesisScope.OwnSelection(b, b with { Flags = 0 }), "same base ID with different quality not owned");
+Check(!plan.ConsumeOne(42, null) && plan.Head == a, "unrelated native result cannot authorize consumption");
+Check(!plan.ConsumeOne(a.Id, a) && plan.Head == a, "unchanged inventory waits rather than resubmitting");
+Check(plan.ConsumeOne(a.Id, a with { Id = 99 }), "acknowledged single item can be replaced by result material");
+Check(plan.Head == b && plan.Matches(1, 1, new[] { b }), "acknowledgement advances only to next captured row");
+Check(!plan.ConsumeOne(b.Id, b with { Quantity = 1 }), "unexpected multi-item loss rejected");
+Check(!plan.ConsumeOne(b.Id, null), "entire captured stack disappearance rejected for single submission");
+Check(!plan.ConsumeOne(b.Id, b with { Quantity = 2, Flags = 0 }), "decrement plus quality swap rejected");
+Check(plan.ConsumeOne(1_000_042, b with { Quantity = 2 }), "HQ native result matches captured base ID");
+Check(plan.Head.Quantity == 2 && !plan.Empty, "stack shrinks by exactly one");
+Check(plan.ConsumeOne(b.Id, b with { Quantity = 1 }), "second stack unit acknowledged");
+Check(plan.ConsumeOne(b.Id, null) && plan.Empty, "last stack unit removes final captured row");
+Check(plan.Matches(1, 1, Array.Empty<DesynthItem>()) && !plan.ConsumeOne(b.Id, null), "empty tab completes without another submission");
+Check(!plan.Matches(1, 1, new[] { a }), "new output item never processed after plan is empty");
+foreach (var invalid in new[]
+{
+    (-1, new[] { a }), (8, new[] { a }), (1, new[] { a, a }),
+    (1, new[] { a with { Id = 0 } }), (1, new[] { a with { Quantity = 0 } }),
+    (1, new[] { a with { Slot = -1 } }), (1, Enumerable.Range(0, 141).Select(i => a with { Slot = i }).ToArray()),
+})
+{
+    var rejected = false;
+    try { _ = new DesynthesisScope(invalid.Item1, invalid.Item2); }
+    catch (ArgumentException) { rejected = true; }
+    Check(rejected, "ambiguous or invalid captured native tab rejected");
+}
+Console.WriteLine($"Passed {checks} total checks including current-tab desynthesis boundaries.");
+
 sealed class FakeOverlay
 {
     public bool IsOpen { get; set; }
