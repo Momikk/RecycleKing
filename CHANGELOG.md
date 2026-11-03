@@ -5,6 +5,7 @@
 ## 0.1.3.3 — 2026-11-04
 
 - Confirm rare and unique item warnings for captured items so auto desynthesis can continue.
+- Shorten the plugin description.
 
 ## 0.1.3.2 — 2026-11-03
 
