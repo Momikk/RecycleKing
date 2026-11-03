@@ -1,15 +1,15 @@
 [
   {
     "DownloadCount": 0,
-    "LastUpdate": 1793723906,
+    "LastUpdate": 1793724824,
     "IsTestingExclusive": false,
-    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/0b19abc62d6d9dd7067cc4db912c93b3947f7857/dist/RecycleKing-0.1.3.3.zip",
-    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/0b19abc62d6d9dd7067cc4db912c93b3947f7857/dist/RecycleKing-0.1.3.3.zip",
+    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/76d4391226ba3301f7904351b17c27576f5fb529/dist/RecycleKing-0.1.3.4.zip",
+    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/76d4391226ba3301f7904351b17c27576f5fb529/dist/RecycleKing-0.1.3.4.zip",
     "IsHide": false,
     "Author": "Momikk",
     "Name": "回收之王 RecycleKing",
     "InternalName": "RecycleKing",
-    "AssemblyVersion": "0.1.3.3",
+    "AssemblyVersion": "0.1.3.4",
     "Description": "使用原生 UI 管理回收清单，支持批量出售、当前标签自动分解，以及未登记套装装备一键出库。",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/Momikk/RecycleKing",
@@ -25,7 +25,7 @@
     "LoadPriority": 0,
     "IconUrl": "https://raw.githubusercontent.com/Momikk/RecycleKing/main/images/icon.png",
     "Punchline": "管理回收清单，在出售界面批量出售背包废品。",
-    "Changelog": "版本 0.1.3.3\n·修复自动分解停在珍稀及独占道具确认的问题，仅确认当前标签清单内的单件物品。\n·精简插件简介。\nEnglish\n·Confirm rare and unique item warnings for captured items so auto desynthesis can continue.\n·Shorten the plugin description.",
+    "Changelog": "版本 0.1.3.4\n·修复珍稀及独占道具确认不生效、自动分解仍然停止的问题。\nEnglish\n·Fix rare and unique item confirmation not taking effect during auto desynthesis.",
     "AcceptsFeedback": true
   }
 ]
