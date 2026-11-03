@@ -196,6 +196,7 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
             { Stop("确认窗口与本次列表物品不一致，已停止。"); return; }
             // Inspect all typed checkbox slots; never assume a fixed checkbox index.
             // GuaranteeNQ is unrelated to bulk mode and is left as the user selected it.
+            AtkComponentCheckBox* warning = null;
             var warningPresent = false;
             var warningChecked = false;
             foreach (var check in dialog->Checkboxes)
@@ -210,6 +211,7 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
                 {
                     if (warningPresent) { Stop("分解警告选项重复，已停止。"); return; }
                     warningPresent = true;
+                    warning = check.Checkbox;
                     warningChecked = check.IsCheckedCached && check.Checkbox->IsChecked;
                 }
                 if (check.Type == SalvageDialogCheckboxType.BulkDesynth && check.Checkbox->IsChecked)
@@ -222,13 +224,14 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
                 nativeButton != null && nativeButton->IsEnabled);
             if (decision == DesynthesisConfirmation.Decision.ConfirmWarning)
             {
-                // Warning consent only, matching the native per-item checkbox callback.
-                // Ownership and the entire remaining tab were checked above. Never use bulk consent.
-                trace.Info("确认本次物品警告", Describe(head));
-                var consent = stackalloc AtkValue[2];
-                consent[0] = new AtkValue { Type = AtkValueType.Int, Int = 13 };
-                consent[1] = new AtkValue { Type = AtkValueType.Bool, Bool = true };
-                dialog->FireCallback(2, consent, true);
+                // Use the current checkbox's own event; callback IDs differ by client/version.
+                // Resolve before changing the visual state, and require exact addon ownership.
+                var evt = NativeButtonEvent((AtkUnitBase*)dialog, (AtkComponentButton*)warning);
+                if (evt == null) { Stop("无法核对本次警告的原生勾选事件，已停止。"); return; }
+                trace.Info("确认本次物品警告", $"{Describe(head)} node={warning->OwnerNode->AtkResNode.NodeId} event={(int)evt->State.EventType} param={evt->Param}");
+                warning->SetChecked(true);
+                AtkEventData data = default;
+                dialog->ReceiveEvent(AtkEventType.ButtonClick, (int)evt->Param, evt, &data);
                 return; // Observe native checkbox and enabled button on a later frame.
             }
             if (decision != DesynthesisConfirmation.Decision.Submit) return;
@@ -363,7 +366,6 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
         if (button == null || !button->IsEnabled || button->OwnerNode == null) return false;
         var node = &button->OwnerNode->AtkResNode;
         var evt = node->AtkEventManager.Event;
-        // Bounded traversal, and only events owned by this exact addon/button.
         for (var i = 0; evt != null && i < 16; i++, evt = evt->NextEvent)
         {
             if (evt->Listener != (AtkEventListener*)addon || evt->State.EventType != AtkEventType.ButtonClick) continue;
@@ -372,6 +374,24 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
             return true;
         }
         return false;
+    }
+
+    private static AtkEvent* NativeButtonEvent(AtkUnitBase* addon, AtkComponentButton* button)
+    {
+        if (button == null || !button->IsEnabled || button->OwnerNode == null) return null;
+        var node = &button->OwnerNode->AtkResNode;
+        var evt = node->AtkEventManager.Event;
+        AtkEvent* found = null;
+        // Only the live component's own unique click event for this exact addon.
+        var count = 0;
+        for (; evt != null && count < 16; count++, evt = evt->NextEvent)
+        {
+            if (evt->Listener != (AtkEventListener*)addon || evt->State.EventType != AtkEventType.ButtonClick
+                || evt->Target != (AtkEventTarget*)node) continue;
+            if (found != null) return null;
+            found = evt;
+        }
+        return evt == null ? found : null;
     }
 
     private static bool HasConfirmation() => Addon("SalvageDialog") != null || Addon("SalvageResult") != null

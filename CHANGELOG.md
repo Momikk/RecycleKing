@@ -2,6 +2,10 @@
 
 [中文更新记录](CHANGELOG.zh-CN.md)
 
+## 0.1.3.4 — 2026-11-04
+
+- Fix rare and unique item confirmation not taking effect during auto desynthesis.
+
 ## 0.1.3.3 — 2026-11-04
 
 - Confirm rare and unique item warnings for captured items so auto desynthesis can continue.

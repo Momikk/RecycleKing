@@ -6,7 +6,7 @@
 
 面向《最终幻想 XIV》物品栏的 Dalamud 插件，整理回收清单，在出售界面批量出售背包废品。
 
-**当前版本为早期测试版（0.1.3.3）**。
+**当前版本为早期测试版（0.1.3.4）**。
 
 [中文更新记录](CHANGELOG.zh-CN.md) · [English Changelog](CHANGELOG.md)
 
