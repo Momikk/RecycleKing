@@ -1,6 +1,7 @@
 namespace RecycleKing;
 
 internal readonly record struct DesynthItem(int Inventory, int Slot, uint Id, int Quantity, byte Flags, string State, string Name);
+internal readonly record struct DesynthRow(int Inventory, int Slot, uint Quantity);
 
 /// <summary>The full native tab captured by one explicit click, reduced only by acknowledged actions.</summary>
 internal sealed class DesynthesisScope
@@ -23,6 +24,10 @@ internal sealed class DesynthesisScope
 
     internal bool Matches(int agentCategory, int addonCategory, IReadOnlyList<DesynthItem> listed)
         => agentCategory == Category && addonCategory == Category && remaining.SequenceEqual(listed);
+
+    internal static bool MatchesRow(DesynthRow ui, DesynthRow agent, DesynthItem item)
+        => ui == agent && ui.Inventory == item.Inventory && ui.Slot == item.Slot
+            && ui.Quantity > 0 && ui.Quantity == item.Quantity;
 
     internal static bool SameIdentity(DesynthItem a, DesynthItem b)
         => a.Inventory == b.Inventory && a.Slot == b.Slot && a.Id == b.Id

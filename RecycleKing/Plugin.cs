@@ -27,6 +27,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
     internal int Revision { get; private set; }
     internal BatchSale Sales { get; private set; } = null!;
     internal BatchDesynthesis Desynthesis { get; private set; } = null!;
+    internal ArmouryCleanup Armoury { get; private set; } = null!;
     private NativeListWindow? window;
     private InventoryButton? inventoryButton;
     private ExpertDeliveryLevels? deliveryLevels;
@@ -56,6 +57,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
             };
             Sales = new BatchSale(this);
             Desynthesis = new BatchDesynthesis(this);
+            Armoury = new ArmouryCleanup(this);
             inventoryButton = new InventoryButton(this);
             deliveryLevels = new ExpertDeliveryLevels();
             overlayHider = new AutoRetainerOverlayHider(this);
@@ -138,6 +140,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
             window?.StopPendingOpen();
             Sales?.Dispose();
             Desynthesis?.Dispose();
+            Armoury?.Dispose();
             inventoryButton?.Dispose();
             deliveryLevels?.Dispose();
         });

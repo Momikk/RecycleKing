@@ -42,7 +42,8 @@ internal sealed unsafe class BatchSale : IDisposable
     // Visibility follows the selling session; transient menus and transactions
     // affect availability only, so manual actions do not make the button flicker.
     internal bool ShowButton => IsRunning || Addon("RetainerSellList") != null || Addon("RetainerSell") != null || TryContext(out _);
-    internal bool CanStart => plugin.Desynthesis is not { IsRunning: true } && TryContext(out var value) && !Busy(value) && !HasDialog() && Addon("ContextMenu") == null;
+    internal bool CanStart => plugin.Desynthesis is not { IsRunning: true } && plugin.Armoury is not { IsRunning: true }
+        && TryContext(out var value) && !Busy(value) && !HasDialog() && Addon("ContextMenu") == null;
 
     internal BatchSale(Plugin plugin)
     {

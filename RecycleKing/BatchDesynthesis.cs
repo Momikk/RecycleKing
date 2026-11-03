@@ -1,3 +1,4 @@
+using static RecycleKing.NativeInventory;
 using System.Numerics;
 using Dalamud.Game.Addon.Lifecycle;
 using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
@@ -8,7 +9,6 @@ using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Nodes;
-using Item = Lumina.Excel.Sheets.Item;
 
 namespace RecycleKing;
 
@@ -75,7 +75,7 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
                     button.Position = new Vector2(Math.Max(0, selector->RootNode->Width - 188), 48);
                     button.IsVisible = selector->IsVisible;
                     button.String = IsRunning ? "停止分解" : "自动分解";
-                    button.IsEnabled = IsRunning || (!plugin.Sales.IsRunning && !HasConfirmation());
+                    button.IsEnabled = IsRunning || (!plugin.Sales.IsRunning && !plugin.Armoury.IsRunning && !HasConfirmation());
                     button.TextTooltip = status + "\n只处理点击时本页列出的物品，不切换标签；已提交的分解仍可能完成。";
                 }
             }
@@ -98,7 +98,7 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
             var selector = (AddonSalvageItemSelector*)Addon(SelectorName);
             var agent = AgentSalvage.Instance();
             if (selector == null || (nint)selector != selectorAddress || selector->Id != selectorId
-                || agent == null || HasConfirmation() || plugin.Sales.IsRunning || !CharacterReady())
+                || agent == null || HasConfirmation() || plugin.Sales.IsRunning || plugin.Armoury.IsRunning || !CharacterReady())
             { Notify("请先关闭当前确认或结果窗口，再开始自动分解。"); return; }
             if (!TryList(selector, agent, out var items)) { Notify("当前分解列表无法核对，未开始。"); return; }
             if (items.Count == 0) { Notify("当前标签页没有可分解物品。"); return; }
@@ -132,7 +132,7 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
             || agent == null || (nint)agent != agentAddress
             || (int)selector->SelectedCategory != plan.Category || (int)agent->SelectedCategory != plan.Category)
         { Stop("角色、窗口或标签页已变化，已停止。"); return; }
-        if (Addon("SelectYesno") != null || Addon("SalvageAutoDialog") != null || plugin.Sales.IsRunning)
+        if (Addon("SelectYesno") != null || Addon("SalvageAutoDialog") != null || plugin.Sales.IsRunning || plugin.Armoury.IsRunning)
         { Stop("出现其他操作或确认窗口，已停止。"); return; }
         if (Environment.TickCount64 >= deadline)
         { Stop(phase == Phase.Refreshing ? "当前列表与剩余计划不一致，已停止。" : "未能核对分解结果，已停止，不会重试该物品。"); return; }
@@ -237,52 +237,29 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
         items = [];
         if (selector->SelectedCategory != agent->SelectedCategory || (int)selector->SelectedCategory is < 0 or > 7
             || selector->ItemCount > 140 || selector->ItemCount != agent->ItemCount
-            || (agent->ItemCount > 0 && agent->ItemList == null)) return false;
+            || (agent->ItemCount > 0 && agent->ItemList == null))
+        {
+            Plugin.Log.Warning($"Desynthesis headers disagree: UI category/count={(int)selector->SelectedCategory}/{selector->ItemCount}; agent={(int)agent->SelectedCategory}/{agent->ItemCount}.");
+            return false;
+        }
         for (var i = 0; i < selector->ItemCount; i++)
         {
             var ui = selector->Items[i];
             var row = agent->ItemList[i];
-            if (ui.Inventory != row.InventoryType || ui.Slot != row.InventorySlot || ui.Quantity != row.Quantity) return false;
             var value = ReadSlot((int)ui.Inventory, ui.Slot);
-            if (value == null || value.Value.Quantity != ui.Quantity
-                || !Plugin.Data.GetExcelSheet<Item>().TryGetRow(value.Value.Id, out var item) || item.Icon != ui.IconId) return false;
+            if (value == null || !DesynthesisScope.MatchesRow(
+                new((int)ui.Inventory, ui.Slot, ui.Quantity),
+                new((int)row.InventoryType, (int)row.InventorySlot, row.Quantity), value.Value))
+            {
+                Plugin.Log.Warning($"Desynthesis list row {i}: UI/agent/inventory position or quantity mismatch.");
+                return false;
+            }
+            // Display icons are not item identities. Resolve the item from the two
+            // matching native positions and the actual inventory slot, as the game does.
             // No CString/Utf8String pointer traversal; display names come from the item sheet.
             items.Add(value.Value);
         }
         return items.Select(x => (x.Inventory, x.Slot)).Distinct().Count() == items.Count;
-    }
-
-    private static DesynthItem? ReadSlot(int inventory, int slot)
-        => TryReadSlot(inventory, slot, out var value) ? value : null;
-
-    private static bool TryReadSlot(int inventory, int slot, out DesynthItem? value)
-    {
-        value = null;
-        if (!AllowedInventory((InventoryType)inventory) || slot < 0) return false;
-        var manager = InventoryManager.Instance();
-        var container = manager == null ? null : manager->GetInventoryContainer((InventoryType)inventory);
-        if (container == null || !container->IsLoaded || slot >= container->Size) return false;
-        var item = container->GetInventorySlot(slot);
-        if (item == null || (int)item->Container != inventory || item->Slot != slot) return false;
-        if (item->ItemId == 0) return true;
-        value = ReadItem(item);
-        return value != null;
-    }
-
-    private static bool AllowedInventory(InventoryType type) => type is InventoryType.Inventory1 or InventoryType.Inventory2
-        or InventoryType.Inventory3 or InventoryType.Inventory4 or InventoryType.EquippedItems
-        or InventoryType.ArmoryMainHand or InventoryType.ArmoryOffHand or InventoryType.ArmoryHead or InventoryType.ArmoryBody
-        or InventoryType.ArmoryHands or InventoryType.ArmoryLegs or InventoryType.ArmoryFeets or InventoryType.ArmoryEar
-        or InventoryType.ArmoryNeck or InventoryType.ArmoryWrist or InventoryType.ArmoryRings;
-
-    private static DesynthItem? ReadItem(InventoryItem* item)
-    {
-        if (item == null || item->IsSymbolic || item->ItemId is 0 or >= 500_000 || item->Quantity <= 0
-            || !AllowedInventory(item->Container) || !Plugin.Data.GetExcelSheet<Item>().TryGetRow(item->ItemId, out var row)) return null;
-        var state = $"{item->Condition}:{item->SpiritbondOrCollectability}:{item->CrafterContentId}:{item->GlamourId}:{item->EventId}";
-        for (var i = 0; i < 5; i++) state += $":{item->Materia[i]}/{item->MateriaGrades[i]}";
-        for (var i = 0; i < 2; i++) state += $":{item->Stains[i]}";
-        return new DesynthItem((int)item->Container, item->Slot, item->ItemId, item->Quantity, (byte)item->Flags, state, row.Name.ToString());
     }
 
     private static bool InventoryMatches(IReadOnlyList<DesynthItem> items, int start)

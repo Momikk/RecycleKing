@@ -194,6 +194,32 @@ foreach (var invalid in new[]
 }
 Console.WriteLine($"Passed {checks} total checks including current-tab desynthesis boundaries.");
 
+var nativeRow = new DesynthRow(a.Inventory, a.Slot, (uint)a.Quantity);
+Check(DesynthesisScope.MatchesRow(nativeRow, nativeRow, a), "native row identity comes from position and real inventory, not presentation icon");
+Check(!DesynthesisScope.MatchesRow(nativeRow, nativeRow with { Slot = 8 }, a), "agent/UI row disagreement rejected");
+Check(!DesynthesisScope.MatchesRow(nativeRow, nativeRow, a with { Inventory = 2 }), "real container disagreement rejected");
+Check(!DesynthesisScope.MatchesRow(nativeRow, nativeRow, a with { Slot = 9 }), "real slot disagreement rejected");
+Check(!DesynthesisScope.MatchesRow(nativeRow, nativeRow, a with { Quantity = 2 }), "real quantity disagreement rejected");
+Check(!DesynthesisScope.MatchesRow(nativeRow with { Quantity = 0 }, nativeRow with { Quantity = 0 }, a with { Quantity = 0 }), "empty native row rejected");
+
+var gearsetIds = new HashSet<uint> { 20713, 1_000_042 };
+Check(ArmouryMoveRules.Protected(gearsetIds, a), "saved NQ gear protected");
+Check(ArmouryMoveRules.Protected(gearsetIds, b), "saved HQ gear protected");
+Check(ArmouryMoveRules.Protected(gearsetIds, a with { Slot = 20, State = "another copy" }), "all copies matching saved gear identity protected");
+Check(!ArmouryMoveRules.Protected(gearsetIds, b with { Flags = 0 }), "NQ not falsely marked saved when only HQ is saved");
+Check(!ArmouryMoveRules.Protected(gearsetIds, a with { Flags = 1 }), "HQ not falsely marked saved when only NQ is saved");
+Check(ArmouryMoveRules.Eligible(gearsetIds, a with { Id = 99 }), "unregistered single piece eligible");
+Check(!ArmouryMoveRules.Eligible(gearsetIds, a), "registered piece never queued");
+Check(!ArmouryMoveRules.Eligible(gearsetIds, a with { Id = 99, Quantity = 2 }), "unexpected stack excluded from equipment moves");
+Check(!ArmouryMoveRules.Eligible(gearsetIds, a with { Id = 0 }), "empty source excluded");
+Check(!ArmouryMoveRules.Eligible(gearsetIds, a with { Id = 500000 }), "non-normal item excluded");
+Check(ArmouryMoveRules.Arrived(a, a with { Inventory = 1, Slot = 10 }), "acknowledged move changes only position");
+Check(!ArmouryMoveRules.Arrived(a, a with { Id = 42 }), "other destination item is not acknowledgement");
+Check(!ArmouryMoveRules.Arrived(a, a with { Flags = 1 }), "destination HQ mismatch rejected");
+Check(!ArmouryMoveRules.Arrived(a, a with { State = "other materia" }), "destination equipment state mismatch rejected");
+Check(!ArmouryMoveRules.Arrived(a, a with { Quantity = 2 }), "destination quantity mismatch rejected");
+Console.WriteLine($"Passed {checks} total checks including native list matching and saved-gearset move guards.");
+
 sealed class FakeOverlay
 {
     public bool IsOpen { get; set; }

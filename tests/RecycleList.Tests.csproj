@@ -15,5 +15,6 @@
     <Compile Include="../RecycleKing/BatchPump.cs" Link="BatchPump.cs" />
     <Compile Include="../RecycleKing/OverlayOcclusion.cs" Link="OverlayOcclusion.cs" />
     <Compile Include="../RecycleKing/DesynthesisScope.cs" Link="DesynthesisScope.cs" />
+    <Compile Include="../RecycleKing/ArmouryMoveRules.cs" Link="ArmouryMoveRules.cs" />
   </ItemGroup>
 </Project>

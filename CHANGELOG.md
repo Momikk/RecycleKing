@@ -2,6 +2,13 @@
 
 [中文更新记录](CHANGELOG.zh-CN.md)
 
+## 0.1.3.0 — 2026-11-03
+
+- Add Garbage Out at the bottom-left of the armoury chest to move items not used by any saved gearset into normal bags, across all categories. Stop when bags are full; click again to stop.
+- Protect saved gearset items with separate HQ/NQ identities. Stop if gearset references or item state change.
+- Correct desynthesis list matching without requiring its display icon to equal the item icon.
+- Actual movement and desynthesis still require in-game verification. Submitted operations may complete after stopping.
+
 ## 0.1.2.0 — 2026-11-03
 
 - Add a native Auto Desynthesis button to process items listed in the current tab at the time of clicking, one at a time in list order. Click again to stop.
