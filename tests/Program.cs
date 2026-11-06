@@ -265,6 +265,14 @@ Check(consent.Evaluate(true, false, false, false, true) == DesynthesisConfirmati
 Check(consent.Evaluate(true, false, true, false, false) == DesynthesisConfirmation.Decision.ConfirmWarning, "new item has independent warning consent");
 Console.WriteLine($"Passed {checks} total checks including scoped warning consent regression.");
 
+Check(!ArmouryMoveRules.HasBagRoom(0), "full bags never allow armoury cleanup");
+Check(!ArmouryMoveRules.HasBagRoom(4), "less than five free slots does not start cleanup");
+Check(!ArmouryMoveRules.HasBagRoom(5), "exactly five free slots is the stopping boundary");
+Check(ArmouryMoveRules.HasBagRoom(6) && !ArmouryMoveRules.HasBagRoom(6 - 1), "one move from six slots leaves five and forbids another move");
+Check(ArmouryMoveRules.HasBagRoom(140), "empty normal bags allow cleanup");
+Check(!ArmouryMoveRules.HasBagRoom(-1) && !ArmouryMoveRules.HasBagRoom(141), "invalid free slot counts fail closed");
+Console.WriteLine($"Passed {checks} total checks including five reserved bag slots.");
+
 sealed class FakeOverlay
 {
     public bool IsOpen { get; set; }

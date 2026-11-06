@@ -2,6 +2,10 @@
 
 [中文更新记录](CHANGELOG.zh-CN.md)
 
+## 0.1.3.5 — 2026-11-06
+
+- Stop Garbage Out when only 5 bag slots remain free.
+
 ## 0.1.3.4 — 2026-11-04
 
 - Fix rare and unique item confirmation not taking effect during auto desynthesis.

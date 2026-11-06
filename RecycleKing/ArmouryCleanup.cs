@@ -103,14 +103,17 @@ internal sealed unsafe class ArmouryCleanup : IDisposable
             foreach (var item in items)
                 if (ArmouryMoveRules.Eligible(registered, item)) queue.Enqueue(item);
             if (queue.Count == 0) { Notify("兵装库中没有未登记套装的散件。"); return; }
-            if (!FirstEmptyBagSlot(out _, out _)) { Notify("背包已满，未开始出库。"); return; }
+            if (!TryBagDestination(out var emptySlots, out _, out _))
+            { Notify("背包数据尚未就绪，未开始出库。"); return; }
+            if (!ArmouryMoveRules.HasBagRoom(emptySlots))
+            { Notify($"背包剩余 {emptySlots} 个空格，需保留 {ArmouryMoveRules.ReservedBagSlots} 个空格，未开始出库。"); return; }
             character = Plugin.Player.ContentId;
             territory = Plugin.ClientState.TerritoryType;
             moved = 0;
             pending = false;
             stableAfter = Environment.TickCount64 + 200;
             IsRunning = true;
-            trace.Start($"items={queue.Count} protectedIdentities={registered.Count}");
+            trace.Start($"items={queue.Count} protectedIdentities={registered.Count} emptySlots={emptySlots} reservedSlots={ArmouryMoveRules.ReservedBagSlots}");
         }
         catch (Exception error)
         {
@@ -150,7 +153,10 @@ internal sealed unsafe class ArmouryCleanup : IDisposable
         foreach (var item in queue)
             if (ReadSlot(item.Inventory, item.Slot) != item || ArmouryMoveRules.Protected(active, item))
             { Stop("待出库物品或套装引用已变化，已停止。"); return; }
-        if (!FirstEmptyBagSlot(out targetInventory, out targetSlot)) { Stop("背包已满，已停止。"); return; }
+        if (!TryBagDestination(out var emptySlots, out targetInventory, out targetSlot))
+        { Stop("背包数据不可用，已停止。"); return; }
+        if (!ArmouryMoveRules.HasBagRoom(emptySlots))
+        { Stop($"背包剩余 {emptySlots} 个空格，已停止出库，保留 {ArmouryMoveRules.ReservedBagSlots} 个空格。"); return; }
         var manager = InventoryManager.Instance();
         if (manager == null) { Stop("物品栏数据不可用，已停止。"); return; }
         current = queue.Peek();
@@ -192,8 +198,9 @@ internal sealed unsafe class ArmouryCleanup : IDisposable
         return true;
     }
 
-    private static bool FirstEmptyBagSlot(out int inventory, out int slot)
+    private static bool TryBagDestination(out int emptySlots, out int inventory, out int slot)
     {
+        emptySlots = 0;
         inventory = slot = -1;
         var manager = InventoryManager.Instance();
         if (manager == null) return false;
@@ -203,9 +210,13 @@ internal sealed unsafe class ArmouryCleanup : IDisposable
             var bag = manager->GetInventoryContainer((InventoryType)page);
             if (bag == null || !bag->IsLoaded || bag->Type != (InventoryType)page || bag->Size != 35 || bag->Items == null) return false;
             for (var i = 0; i < bag->Size; i++)
-                if (inventory < 0 && bag->Items[i].ItemId == 0) { inventory = page; slot = i; }
+                if (bag->Items[i].ItemId == 0)
+                {
+                    emptySlots++;
+                    if (inventory < 0) { inventory = page; slot = i; }
+                }
         }
-        return inventory >= 0;
+        return true;
     }
 
     private void Notify(string text)
