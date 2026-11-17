@@ -35,6 +35,8 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
     private readonly OperationTrace trace = new("自动分解");
     private bool waitingForIdle;
     private enum Phase { Ready, Opening, Submitted, Closing, Refreshing }
+    internal string Status { get; private set; } = "尚未启动。";
+    internal int ConfirmedItems => completed;
     internal bool IsRunning => scope != null;
 
     internal BatchDesynthesis(Plugin plugin)
@@ -96,7 +98,26 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
 
     private void Toggle()
     {
-        if (IsRunning) { Stop("已停止；已提交的分解仍可能完成。", true); return; }
+        if (IsRunning) RequestStop();
+        else TryStart();
+    }
+
+    internal bool TryStart()
+    {
+        if (IsRunning) return false;
+        Begin();
+        return IsRunning;
+    }
+
+    internal bool RequestStop()
+    {
+        if (!IsRunning) return false;
+        Stop("已停止；已提交的分解仍可能完成。", true);
+        return true;
+    }
+
+    private void Begin()
+    {
         try
         {
             var selector = (AddonSalvageItemSelector*)Addon(SelectorName);
@@ -104,6 +125,8 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
             if (selector == null || (nint)selector != selectorAddress || selector->Id != selectorId
                 || agent == null || HasConfirmation() || plugin.Sales.IsRunning || plugin.Armoury.IsRunning || !CharacterReady())
             { Notify("请先关闭当前确认或结果窗口，再开始自动分解。"); return; }
+            if (phase == Phase.Submitted && Environment.TickCount64 < deadline)
+            { Notify("上一笔分解仍待核对，请稍后再试。"); return; }
             if (!TryList(selector, agent, out var items)) { Notify("当前分解列表无法核对，未开始。"); return; }
             if (items.Count == 0) { Notify("当前标签页没有可分解物品。"); return; }
             var plan = new DesynthesisScope((int)selector->SelectedCategory, items);
@@ -116,6 +139,7 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
             scope = plan;
             readiness.Reset();
             waitingForIdle = false;
+            Status = "准备分解。";
             trace.Start($"category={plan.Category} rows={items.Count} units={items.Sum(x => (long)x.Quantity)}");
         }
         catch (Exception error)
@@ -399,6 +423,7 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
 
     private void Notify(string message)
     {
+        Status = message;
         trace.Info("提示", message);
         Plugin.Chat.Print($"[回收之王] {message}");
     }

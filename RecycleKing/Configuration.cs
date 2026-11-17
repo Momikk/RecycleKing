@@ -9,4 +9,5 @@ public sealed class Configuration : IPluginConfiguration
     public List<uint> ItemIds { get; set; } = [];
     public bool HideAutoRetainerGcOverlay { get; set; } = true;
     public bool HighlightListedItems { get; set; } = true;
+    public bool ShowExpertDeliveryLevels { get; set; } = true;
 }

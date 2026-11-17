@@ -1,6 +1,6 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
   <PropertyGroup>
-    <Version>0.1.3.5</Version>
+    <Version>0.1.4.0</Version>
     <Author>Momikk</Author>
     <Name>回收之王 RecycleKing</Name>
     <RepoUrl>https://github.com/Momikk/RecycleKing</RepoUrl>
@@ -12,7 +12,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <CanUnloadAsync>true</CanUnloadAsync>
-    <Changelog>版本 0.1.3.5&#10;·垃圾出库在背包剩余 5 个空格时停止，预留背包空间。&#10;English&#10;·Stop Garbage Out when only 5 bag slots remain free.</Changelog>
+    <Changelog>版本 0.1.4.0&#10;·新增对外 IPC，其他插件可管理回收清单、调整显示设置，并启动、停止或查询批量操作。&#10;English&#10;·Add IPC for managing the recycling list and display settings, and for starting, stopping, or checking batch operations.</Changelog>
     <PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
   </PropertyGroup>
   <ItemGroup>

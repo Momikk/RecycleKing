@@ -2,6 +2,10 @@
 
 [中文更新记录](CHANGELOG.zh-CN.md)
 
+## 0.1.4.0 — 2026-11-17
+
+- Add IPC for managing the recycling list and display settings, and for starting, stopping, or checking batch operations.
+
 ## 0.1.3.5 — 2026-11-06
 
 - Stop Garbage Out when only 5 bag slots remain free.

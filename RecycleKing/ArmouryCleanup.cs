@@ -32,6 +32,8 @@ internal sealed unsafe class ArmouryCleanup : IDisposable
     private int moved;
     private bool pending;
     private bool updating;
+    internal string Status { get; private set; } = "尚未启动。";
+    internal int ConfirmedItems => moved;
     internal bool IsRunning { get; private set; }
 
     internal ArmouryCleanup(Plugin plugin)
@@ -91,12 +93,33 @@ internal sealed unsafe class ArmouryCleanup : IDisposable
 
     private void Toggle()
     {
-        if (IsRunning) { Stop("已停止；已提交的移动仍可能完成。"); return; }
+        if (IsRunning) RequestStop();
+        else TryStart();
+    }
+
+    internal bool TryStart()
+    {
+        if (IsRunning) return false;
+        Begin();
+        return IsRunning;
+    }
+
+    internal bool RequestStop()
+    {
+        if (!IsRunning) return false;
+        Stop("已停止；已提交的移动仍可能完成。");
+        return true;
+    }
+
+    private void Begin()
+    {
         try
         {
             var addon = GetAddon();
             if (!Available() || addon == null || !addon->IsVisible || (nint)addon != addonAddress || addon->Id != addonId)
             { Notify("请先结束当前操作，再开始垃圾出库。"); return; }
+            if (pending && Environment.TickCount64 < deadline)
+            { Notify("上一笔出库仍待核对，请稍后再试。"); return; }
             if (!TryGearsets(out registered)) { Notify("装备套装数据尚未就绪，未开始出库。"); return; }
             if (!TryArmoury(out var items)) { Notify("兵装库数据尚未就绪，未开始出库。"); return; }
             queue.Clear();
@@ -113,6 +136,7 @@ internal sealed unsafe class ArmouryCleanup : IDisposable
             pending = false;
             stableAfter = Environment.TickCount64 + 200;
             IsRunning = true;
+            Status = "准备出库。";
             trace.Start($"items={queue.Count} protectedIdentities={registered.Count} emptySlots={emptySlots} reservedSlots={ArmouryMoveRules.ReservedBagSlots}");
         }
         catch (Exception error)
@@ -221,6 +245,7 @@ internal sealed unsafe class ArmouryCleanup : IDisposable
 
     private void Notify(string text)
     {
+        Status = text;
         trace.Info("提示", text);
         Plugin.Chat.Print($"[回收之王] {text}");
     }

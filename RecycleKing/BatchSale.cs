@@ -15,7 +15,7 @@ using Item = Lumina.Excel.Sheets.Item;
 
 namespace RecycleKing;
 
-/// <summary>Runs only after a button click, through the game's own inventory menu and shop dialogs.</summary>
+/// <summary>Runs on request, through the game's own inventory menu and shop dialogs.</summary>
 internal sealed unsafe class BatchSale : IDisposable
 {
     private static readonly string[] ContextAddons = ["Shop", "InventoryRetainer", "InventoryRetainerLarge"];
@@ -39,11 +39,14 @@ internal sealed unsafe class BatchSale : IDisposable
     private uint bagAddonId;
 
     internal bool IsRunning { get; private set; }
+    internal long ConfirmedItems => soldItems;
+    internal int ConfirmedStacks => soldStacks;
     internal string Status { get; private set; } = "点击废品回收，出售普通背包中的清单物品（含 HQ）。";
     // Visibility follows the selling session; transient menus and transactions
     // affect availability only, so manual actions do not make the button flicker.
     internal bool ShowButton => IsRunning || Addon("RetainerSellList") != null || Addon("RetainerSell") != null || TryContext(out _);
-    internal bool CanStart => plugin.Desynthesis is not { IsRunning: true } && plugin.Armoury is not { IsRunning: true }
+    internal bool CanStart => (phase != 2 || Environment.TickCount64 >= deadline || IsRunning)
+        && plugin.Desynthesis is not { IsRunning: true } && plugin.Armoury is not { IsRunning: true }
         && TryContext(out var value) && !Busy(value) && !HasDialog() && Addon("ContextMenu") == null;
 
     internal BatchSale(Plugin plugin)
@@ -57,8 +60,30 @@ internal sealed unsafe class BatchSale : IDisposable
 
     internal void Toggle()
     {
-        if (IsRunning) { Stop("已停止；已提交的出售仍可能完成。"); return; }
-        if (!CanStart || !TryContext(out context)) { Notify("当前无法出售物品。"); return; }
+        if (IsRunning) RequestStop();
+        else TryStart();
+    }
+
+    internal bool TryStart()
+    {
+        if (IsRunning) return false;
+        Begin();
+        return IsRunning;
+    }
+
+    internal bool RequestStop()
+    {
+        if (!IsRunning) return false;
+        Stop("已停止；已提交的出售仍可能完成。");
+        return true;
+    }
+
+    private void Begin()
+    {
+        if (phase == 2 && Environment.TickCount64 < deadline)
+        { Notify("上一笔出售仍待核对，请稍后再试。"); return; }
+        if (!CanStart || BagAddon() == null || !TryContext(out context))
+        { Notify("请在可出售物品时打开普通背包，再开始回收。"); return; }
         list = plugin.Config.ItemIds.ToHashSet();
         queue.Clear();
         // A click captures a finite plan. Newly received or moved items are never silently added.

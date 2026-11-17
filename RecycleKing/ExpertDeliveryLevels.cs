@@ -20,9 +20,11 @@ internal sealed unsafe class ExpertDeliveryLevels : IDisposable
     private readonly Dictionary<nint, Decoration> rows = [];
     private TextNode? heading;
     private long retryAfter;
+    private readonly Plugin plugin;
 
-    internal ExpertDeliveryLevels()
+    internal ExpertDeliveryLevels(Plugin plugin)
     {
+        this.plugin = plugin;
         Plugin.Addons.RegisterListener(AddonEvent.PreDraw, AddonName, Draw);
         Plugin.Addons.RegisterListener(AddonEvent.PreFinalize, AddonName, FinalizeAddon);
     }
@@ -30,7 +32,12 @@ internal sealed unsafe class ExpertDeliveryLevels : IDisposable
     private void Draw(AddonEvent type, AddonArgs args)
     {
         if (Environment.TickCount64 < retryAfter) return;
-        try { Refresh((AddonGrandCompanySupplyList*)args.Addon.Address); }
+        var addon = (AddonGrandCompanySupplyList*)args.Addon.Address;
+        try
+        {
+            if (plugin.Config.ShowExpertDeliveryLevels) Refresh(addon);
+            else if ((rows.Count > 0 || heading is not null) && addon != null) Cleanup(addon);
+        }
         catch (Exception exception)
         {
             HideAll();

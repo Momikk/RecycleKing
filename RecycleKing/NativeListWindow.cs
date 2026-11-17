@@ -59,14 +59,14 @@ internal sealed unsafe class NativeListWindow : NativeAddon
             Position = origin, Size = new(width, 24), String = "隐藏 AutoRetainer 军票悬浮框",
             IsChecked = plugin.Config.HideAutoRetainerGcOverlay,
             TextTooltip = "仅隐藏悬浮框，不会停止 AutoRetainer 已启用的自动交纳。关闭本选项可恢复；插件更新后可能需要适配。",
-            OnClick = value => { plugin.Config.HideAutoRetainerGcOverlay = value; plugin.Save(); },
+            OnClick = value => plugin.SetHideAutoRetainerGcOverlay(value),
         };
         AddNode(hideOverlay);
         highlight = new CheckboxNode
         {
             Position = origin + new Vector2(0, 27), Size = new(width, 24), String = "背包清单物品显示粉色遮罩与 X",
             IsChecked = plugin.Config.HighlightListedItems,
-            OnClick = value => { plugin.Config.HighlightListedItems = value; plugin.Save(); },
+            OnClick = value => plugin.SetHighlightListedItems(value),
         };
         AddNode(highlight);
         heading = new ResNode { Position = origin + new Vector2(0, 56), Size = new(width, 28) };
@@ -123,6 +123,8 @@ internal sealed unsafe class NativeListWindow : NativeAddon
     private void Refresh()
     {
         if (list is null) return;
+        if (hideOverlay is not null) hideOverlay.IsChecked = plugin.Config.HideAutoRetainerGcOverlay;
+        if (highlight is not null) highlight.IsChecked = plugin.Config.HighlightListedItems;
         var sheet = Plugin.Data.GetExcelSheet<Item>();
         list.OptionsList = PinyinOrder.Sort(plugin.Config.ItemIds.Select(id => sheet.TryGetRow(id, out var item)
             ? new RecycleRow(id, item.Icon, item.Name.ExtractText(), plugin.Remove)

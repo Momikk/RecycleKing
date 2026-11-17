@@ -41,6 +41,9 @@ try {
     foreach ($name in @('LICENSE', 'THIRD-PARTY-NOTICES.md', 'CHANGELOG.md', 'CHANGELOG.zh-CN.md', 'README.md', 'README.en.md')) {
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination $stage -Force
     }
+    $stageDocs = Join-Path $stage 'docs'
+    New-Item -ItemType Directory -Path $stageDocs -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'docs\ipc.md') -Destination $stageDocs -Force
     $manifest = Get-Content -LiteralPath (Join-Path $stage 'RecycleKing.json') -Raw | ConvertFrom-Json
     if ($manifest.AssemblyVersion -ne $version -or [string]::IsNullOrWhiteSpace($manifest.Changelog)) {
         throw '插件清单版本或更新说明不正确。'
