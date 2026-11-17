@@ -1,6 +1,6 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
   <PropertyGroup>
-    <Version>0.1.4.0</Version>
+    <Version>0.1.4.1</Version>
     <Author>Momikk</Author>
     <Name>回收之王 RecycleKing</Name>
     <RepoUrl>https://github.com/Momikk/RecycleKing</RepoUrl>
@@ -12,7 +12,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <CanUnloadAsync>true</CanUnloadAsync>
-    <Changelog>版本 0.1.4.0&#10;·新增对外 IPC，其他插件可管理回收清单、调整显示设置，并启动、停止或查询批量操作。&#10;English&#10;·Add IPC for managing the recycling list and display settings, and for starting, stopping, or checking batch operations.</Changelog>
+    <Changelog>版本 0.1.4.1&#10;·移除“废品回收”按钮的鼠标悬停提示。&#10;English&#10;·Remove the recycling button hover tooltip.</Changelog>
     <PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
   </PropertyGroup>
   <ItemGroup>

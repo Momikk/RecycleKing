@@ -50,9 +50,6 @@ internal sealed unsafe class InventoryButton : IDisposable
                 button.IsVisible = handle.IsVisible && show;
                 button.String = plugin.Sales.IsRunning ? "停止回收" : "废品回收";
                 button.IsEnabled = plugin.Sales.IsRunning || (canStart && plugin.Config.ItemIds.Count > 0);
-                button.TextTooltip = plugin.Sales.IsRunning ? plugin.Sales.Status + "\n点击停止；已提交的出售仍可能完成。"
-                    : !canStart ? "请先完成当前出售或价格调整，再开始废品回收。"
-                    : "点击即批量出售普通背包中的清单物品，包含 HQ 和整组数量。\n管理清单请打开插件设置或输入 /rking。";
             }
         }
         catch (Exception exception)

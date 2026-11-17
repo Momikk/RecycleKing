@@ -2,6 +2,10 @@
 
 [中文更新记录](CHANGELOG.zh-CN.md)
 
+## 0.1.4.1 — 2026-11-17
+
+- Remove the recycling button hover tooltip.
+
 ## 0.1.4.0 — 2026-11-17
 
 - Add IPC for managing the recycling list and display settings, and for starting, stopping, or checking batch operations.
