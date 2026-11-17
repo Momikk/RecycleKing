@@ -1,15 +1,15 @@
 [
   {
     "DownloadCount": 0,
-    "LastUpdate": 1794897821,
+    "LastUpdate": 1794930502,
     "IsTestingExclusive": false,
-    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/921c6fbd90fb1128d42def9b1bccd9657e852f92/dist/RecycleKing-0.1.4.0.zip",
-    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/921c6fbd90fb1128d42def9b1bccd9657e852f92/dist/RecycleKing-0.1.4.0.zip",
+    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/3b34bad690686615987e2f450fe3a35ce00f171c/dist/RecycleKing-0.1.4.1.zip",
+    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/3b34bad690686615987e2f450fe3a35ce00f171c/dist/RecycleKing-0.1.4.1.zip",
     "IsHide": false,
     "Author": "Momikk",
     "Name": "回收之王 RecycleKing",
     "InternalName": "RecycleKing",
-    "AssemblyVersion": "0.1.4.0",
+    "AssemblyVersion": "0.1.4.1",
     "Description": "使用原生 UI 管理回收清单，支持批量出售、当前标签自动分解，以及未登记套装装备一键出库。",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/Momikk/RecycleKing",
@@ -25,7 +25,7 @@
     "LoadPriority": 0,
     "IconUrl": "https://raw.githubusercontent.com/Momikk/RecycleKing/main/images/icon.png",
     "Punchline": "管理回收清单，在出售界面批量出售背包废品。",
-    "Changelog": "版本 0.1.4.0\n·新增对外 IPC，其他插件可管理回收清单、调整显示设置，并启动、停止或查询批量操作。\nEnglish\n·Add IPC for managing the recycling list and display settings, and for starting, stopping, or checking batch operations.",
+    "Changelog": "版本 0.1.4.1\n·移除“废品回收”按钮的鼠标悬停提示。\nEnglish\n·Remove the recycling button hover tooltip.",
     "AcceptsFeedback": true
   }
 ]
