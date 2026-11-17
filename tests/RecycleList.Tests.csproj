@@ -18,5 +18,6 @@
     <Compile Include="../RecycleKing/ArmouryMoveRules.cs" Link="ArmouryMoveRules.cs" />
     <Compile Include="../RecycleKing/DesynthesisReadiness.cs" Link="DesynthesisReadiness.cs" />
     <Compile Include="../RecycleKing/DesynthesisConfirmation.cs" Link="DesynthesisConfirmation.cs" />
+    <Compile Include="../RecycleKing/SaleHandoff.cs" Link="SaleHandoff.cs" />
   </ItemGroup>
 </Project>

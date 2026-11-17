@@ -2,6 +2,11 @@
 
 [中文更新记录](CHANGELOG.zh-CN.md)
 
+## 0.1.4.2 — 2026-11-18
+
+- Wait for a completed sale and confirm idle state on a later frame before continuing.
+- Log sale menu selection, quantity confirmation and timeout state.
+
 ## 0.1.4.1 — 2026-11-17
 
 - Remove the recycling button hover tooltip.

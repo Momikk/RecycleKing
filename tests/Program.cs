@@ -273,6 +273,36 @@ Check(ArmouryMoveRules.HasBagRoom(140), "empty normal bags allow cleanup");
 Check(!ArmouryMoveRules.HasBagRoom(-1) && !ArmouryMoveRules.HasBagRoom(141), "invalid free slot counts fail closed");
 Console.WriteLine($"Passed {checks} total checks including five reserved bag slots.");
 
+var saleHandoff = new SaleHandoff();
+Check(!saleHandoff.Ready(10, true), "sale completion does not allow same-frame next sale");
+Check(!saleHandoff.Ready(10, true), "addon PostUpdate in same framework frame cannot release handoff");
+Check(saleHandoff.Ready(11, true), "later framework frame confirms idle native shop");
+saleHandoff.Reset();
+Check(!saleHandoff.Ready(20, true) && !saleHandoff.Ready(21, false), "busy or unavailable handler breaks stable readiness");
+Check(!saleHandoff.Ready(22, true) && saleHandoff.Ready(23, true), "clearing busy requires a fresh later framework observation");
+var handoffPump = new BatchPump();
+var handoffProgress = 0;
+var handoffFrame = 30L;
+var openedNextSale = 0;
+var handoffPhase = 0;
+saleHandoff.Reset();
+void AdvanceSaleHandoff()
+{
+    if (handoffPhase == 0) { handoffPhase = 1; handoffProgress++; return; }
+    if (handoffPhase == 1 && saleHandoff.Ready(handoffFrame, true))
+    { handoffPhase = 2; handoffProgress++; openedNextSale++; }
+}
+handoffPump.Run(AdvanceSaleHandoff, () => handoffProgress);
+Check(openedNextSale == 0, "actual BatchPump cannot open a new transaction in the acknowledgement call");
+handoffPump.Run(AdvanceSaleHandoff, () => handoffProgress);
+Check(openedNextSale == 0, "same-frame addon event cannot open a new transaction");
+handoffFrame++;
+handoffPump.Run(AdvanceSaleHandoff, () => handoffProgress);
+Check(openedNextSale == 1, "next framework observation opens exactly one transaction");
+handoffPump.Run(AdvanceSaleHandoff, () => handoffProgress);
+Check(openedNextSale == 1, "repeated pump cannot duplicate released transaction");
+Console.WriteLine($"Passed {checks} total checks including cross-frame sale handoff.");
+
 sealed class FakeOverlay
 {
     public bool IsOpen { get; set; }

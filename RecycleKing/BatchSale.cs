@@ -22,6 +22,9 @@ internal sealed unsafe class BatchSale : IDisposable
     private static readonly string[] SaleAddons = ["ContextMenu", "InputNumeric", "SelectYesno"];
     private readonly BatchPump pump = new();
     private int progress;
+    private long frameworkFrame;
+    private readonly SaleHandoff handoff = new();
+    private string lastNativeState = "";
     private readonly Plugin plugin;
     private readonly OperationTrace trace = new("废品回收");
     private readonly Queue<SaleSlot> queue = [];
@@ -53,6 +56,7 @@ internal sealed unsafe class BatchSale : IDisposable
     {
         this.plugin = plugin;
         Plugin.Framework.Update += Tick;
+        Plugin.Toasts.ErrorToast += OnErrorToast;
         Plugin.Addons.RegisterListener(AddonEvent.PreFinalize, ContextAddons, FinalizeContext);
         Plugin.Addons.RegisterListener(AddonEvent.PostSetup, SaleAddons, SaleAddonReady);
         Plugin.Addons.RegisterListener(AddonEvent.PostUpdate, SaleAddons, SaleAddonReady);
@@ -94,13 +98,21 @@ internal sealed unsafe class BatchSale : IDisposable
         IsRunning = true;
         soldStacks = 0;
         soldItems = 0;
-        phase = 0;
+        current = default;
+        quantitySent = false;
+        phase = 3;
+        handoff.Reset();
+        lastNativeState = "";
         deadline = Environment.TickCount64 + 5000;
         Status = $"准备回收 {queue.Count} 组物品，再次点击可停止。";
         trace.Start($"stacks={queue.Count} units={queue.Sum(x => (long)x.Quantity)}");
     }
 
-    private void Tick(IFramework framework) => Pump();
+    private void Tick(IFramework framework)
+    {
+        frameworkFrame++;
+        Pump();
+    }
 
     private void SaleAddonReady(AddonEvent type, AddonArgs args)
     {
@@ -124,11 +136,22 @@ internal sealed unsafe class BatchSale : IDisposable
         if (!list.SetEquals(plugin.Config.ItemIds)) { Stop("回收清单已修改，已停止。"); return; }
         if (!TryReadInventory(out var inventory)) { Stop("背包状态不可用，已停止。"); return; }
         var now = Environment.TickCount64;
+        if (phase == 3)
+        {
+            if (now >= deadline) { Stop("交易状态持续未就绪，已停止。"); return; }
+            var ready = Handler(context) != null && !Busy(context) && !HasDialog() && Addon("ContextMenu") == null;
+            TraceNativeState("等待下一笔就绪");
+            if (!handoff.Ready(frameworkFrame, ready)) return;
+            trace.Info("下一笔已就绪", $"frame={frameworkFrame}");
+            phase = 0;
+            progress++;
+            return;
+        }
         if (phase == 0)
         {
             if (queue.Count == 0) { Stop("回收完成。"); return; }
             if (HasDialog() || Addon("ContextMenu") != null) { Stop("出现其他交易或窗口，已停止。"); return; }
-            if (Busy(context))
+            if (Handler(context) == null || Busy(context))
             {
                 if (now >= deadline) Stop("交易状态持续繁忙，已停止。");
                 return;
@@ -141,6 +164,7 @@ internal sealed unsafe class BatchSale : IDisposable
             totalBefore = Total(inventory);
             confirmations.Clear();
             quantitySent = false;
+            lastNativeState = "";
             var bag = BagAddon();
             var agent = AgentInventoryContext.Instance();
             if (bag == null || agent == null) { Stop("背包或物品菜单不可用，已停止。"); return; }
@@ -159,7 +183,7 @@ internal sealed unsafe class BatchSale : IDisposable
             var menu = (AddonContextMenu*)Addon("ContextMenu");
             if (menu == null) return;
             if (!Unchanged(inventory)) { Stop("待出售物品已变化，已停止。"); return; }
-            if (!SelectSell(menu, out var reason, out var pending))
+            if (!TrySellIndex(menu, out var match, out var reason, out var pending))
             {
                 if (!pending) Stop($"无法核对原生出售菜单（{reason}），已停止。");
                 return;
@@ -167,18 +191,22 @@ internal sealed unsafe class BatchSale : IDisposable
             phase = 2;
             progress++;
             deadline = now + 15000;
+            trace.Info("派发原生出售菜单", $"item={current.Id} page={current.Page} slot={current.Slot} quantity={current.Quantity} menuIndex={match} frame={frameworkFrame}");
+            Callback((AtkUnitBase*)menu, [0, match, 0]);
             return;
         }
 
+        TraceNativeState("等待出售结果");
         var handler = Handler(context);
         var gil = Gil(context);
         if (SaleRules.Confirmed(current, totalBefore, Total(inventory), gilBefore, gil)
-            && !HasDialog() && Addon("ContextMenu") == null && (handler == null || !handler->WaitingForTransactionToFinish))
+            && !HasDialog() && Addon("ContextMenu") == null && handler != null && !Busy(context))
         {
             soldStacks++;
             soldItems += current.Quantity;
-            trace.Info("确认出售成功", $"item={current.Id} quantity={current.Quantity} stacks={soldStacks} units={soldItems}");
-            phase = 0;
+            trace.Info("确认出售成功", $"item={current.Id} quantity={current.Quantity} stacks={soldStacks} units={soldItems} totalBefore={totalBefore} totalAfter={Total(inventory)} gilDelta={gil - gilBefore}");
+            phase = 3;
+            handoff.Reset();
             deadline = now + 5000;
             progress++;
             return;
@@ -198,6 +226,7 @@ internal sealed unsafe class BatchSale : IDisposable
             { Stop("出售数量窗口不匹配，已停止。"); return; }
             quantitySent = true;
             progress++;
+            trace.Info("提交出售数量", $"item={current.Id} quantity={current.Quantity} min={numeric->AtkValues[2].UInt} max={numeric->AtkValues[3].UInt} frame={frameworkFrame}");
             Callback((AtkUnitBase*)numeric, [current.Quantity]);
             return;
         }
@@ -212,12 +241,14 @@ internal sealed unsafe class BatchSale : IDisposable
             { Stop("游戏确认窗口无法核对，已停止，请手动处理。"); return; }
             if (!confirmations.Add(prompt)) return;
             progress++;
+            trace.Info("提交本次出售确认", $"item={current.Id} quantity={current.Quantity} frame={frameworkFrame}");
             Callback((AtkUnitBase*)confirm, [0]);
         }
     }
 
-    private bool SelectSell(AddonContextMenu* menu, out string reason, out bool pending)
+    private bool TrySellIndex(AddonContextMenu* menu, out int match, out string reason, out bool pending)
     {
+        match = -1;
         pending = false;
         reason = "物品菜单来源不匹配";
         var agent = AgentInventoryContext.Instance();
@@ -258,10 +289,9 @@ internal sealed unsafe class BatchSale : IDisposable
             rows[i] = new(text.TextValue, text.Payloads.Count == 1 && text.Payloads[0] is TextPayload,
                 renderer != null && renderer->IsEnabled, (menu->AtkValues[3].UInt & (1u << i)) != 0);
         }
-        var match = SaleRules.NativeSaleIndex(rows, labels);
+        match = SaleRules.NativeSaleIndex(rows, labels);
         reason = "未找到唯一可用的原生出售项";
         if (match < 0) return false;
-        Callback((AtkUnitBase*)menu, [0, match, 0]);
         return true;
     }
 
@@ -381,6 +411,23 @@ internal sealed unsafe class BatchSale : IDisposable
         addon->FireCallback((uint)values.Length, args, true);
     }
 
+    private void TraceNativeState(string stage)
+    {
+        var handler = Handler(context);
+        var state = $"phase={phase} item={current.Id} quantity={current.Quantity} quantitySent={quantitySent} "
+            + $"menu={Addon("ContextMenu") != null} numeric={Addon("InputNumeric") != null} yesno={Addon("SelectYesno") != null} retainerSell={Addon("RetainerSell") != null}";
+        state += handler == null ? " handler=unavailable" : $" transaction={handler->TransactionType} transactionItem={handler->TransactionItemId} inventory={(int)handler->SellInventoryType} slot={handler->SellInventorySlot} "
+            + $"startingBuy={handler->StartingBuy} startingSell={handler->StartingSell} updatingBuyback={handler->UpdatingBuybackItems} waitingConfirm={handler->WaitingForSellConfirm} waitingTransaction={handler->WaitingForTransactionToFinish}";
+        if (state == lastNativeState) return;
+        lastNativeState = state;
+        trace.Info(stage, state);
+    }
+
+    private void OnErrorToast(ref Dalamud.Game.Text.SeStringHandling.SeString message, ref bool handled)
+    {
+        if (IsRunning) trace.Warning("原生错误提示", $"phase={phase} item={current.Id} quantitySent={quantitySent} message={message.TextValue}");
+    }
+
     private void FinalizeContext(AddonEvent type, AddonArgs args)
     {
         if (IsRunning && args.Addon.Address == context.Addon) Stop("出售窗口已关闭，已停止。");
@@ -396,6 +443,7 @@ internal sealed unsafe class BatchSale : IDisposable
     private void Stop(string reason)
     {
         if (!IsRunning) return;
+        trace.Info("停止前最后观察", lastNativeState);
         trace.Info("停止", $"reason={reason} phase={phase} stacks={soldStacks} units={soldItems} remaining={queue.Count}");
         IsRunning = false;
         queue.Clear();
@@ -406,6 +454,7 @@ internal sealed unsafe class BatchSale : IDisposable
     {
         Stop("插件已关闭，已停止；已提交的出售仍可能完成。");
         Plugin.Framework.Update -= Tick;
+        Plugin.Toasts.ErrorToast -= OnErrorToast;
         Plugin.Addons.UnregisterListener(AddonEvent.PreFinalize, ContextAddons, FinalizeContext);
         Plugin.Addons.UnregisterListener(AddonEvent.PostSetup, SaleAddons, SaleAddonReady);
         Plugin.Addons.UnregisterListener(AddonEvent.PostUpdate, SaleAddons, SaleAddonReady);
