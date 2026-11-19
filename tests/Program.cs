@@ -442,9 +442,294 @@ Check(furnitureOutputPlan.Empty && furnitureOutputPlan.Match(1, 1, new[] { firew
 Check(!furnitureOutputPlan.ConsumeOne(firewood.Id, null), "the 18-item scenario never consumes firewood after the original plan completes");
 Console.WriteLine($"Passed {checks} total checks including the simulated 18-item furniture output regression.");
 
+var statisticsNow = DateTimeOffset.Parse("2026-11-19T14:00:00Z");
+var statisticsZone = TimeZoneInfo.CreateCustomTimeZone("Statistics UTC+8", TimeSpan.FromHours(8), "UTC+8", "UTC+8");
+var emptyStatisticsCells = new SaleStatisticsCells("", "", "");
+Check(SaleStatisticsDisplay.Format(null, statisticsNow, statisticsZone) == emptyStatisticsCells,
+    "items with no sale statistics leave every new cell blank rather than inventing zero or a date");
+Check(SaleStatisticsDisplay.Format(new(null, null), statisticsNow, statisticsZone) == emptyStatisticsCells,
+    "a statistics record with no timestamps also leaves every cell blank");
+var saleOnly = new SaleStatistics(statisticsNow.AddDays(-120), null);
+Check(SaleStatisticsDisplay.IsValid(saleOnly, statisticsNow)
+    && SaleStatisticsDisplay.Format(saleOnly, statisticsNow, statisticsZone) == new SaleStatisticsCells("2026-07-22", "", ""),
+    "a known oldest sale without an observation timestamp displays only its date");
+var observationOnly = new SaleStatistics(null, statisticsNow.AddDays(-2).AddHours(-23));
+Check(SaleStatisticsDisplay.IsValid(observationOnly, statisticsNow)
+    && SaleStatisticsDisplay.Format(observationOnly, statisticsNow, statisticsZone) == new SaleStatisticsCells("", "", "2"),
+    "a known observation without sales displays only complete days since its update");
+var sameMomentStatistics = new SaleStatistics(statisticsNow, statisticsNow);
+Check(SaleStatisticsDisplay.Format(sameMomentStatistics, statisticsNow, statisticsZone) == new SaleStatisticsCells("2026-11-19", "0", "0"),
+    "genuine timestamps at the current instant display two legitimate zero-day ages");
+Check(SaleStatisticsDisplay.Format(new(statisticsNow.AddHours(-23).AddMinutes(-59), statisticsNow), statisticsNow, statisticsZone).DaysAtObservation == "0",
+    "a sale less than 24 hours before observation counts as zero complete days");
+Check(SaleStatisticsDisplay.Format(new(statisticsNow.AddDays(-1), statisticsNow), statisticsNow, statisticsZone).DaysAtObservation == "1",
+    "a sale exactly 24 hours before observation counts as one complete day");
+Check(SaleStatisticsDisplay.Format(new(null, statisticsNow.AddHours(-23).AddMinutes(-59)), statisticsNow, statisticsZone).UpdatedDaysAgo == "0",
+    "an observation less than 24 hours old counts as zero complete update days");
+Check(SaleStatisticsDisplay.Format(new(null, statisticsNow.AddDays(-1)), statisticsNow, statisticsZone).UpdatedDaysAgo == "1",
+    "an observation exactly 24 hours old counts as one complete update day");
+var recordedStatistics = new SaleStatistics(statisticsNow.AddDays(-120).AddHours(-10), statisticsNow.AddDays(-3));
+var recordedCells = SaleStatisticsDisplay.Format(recordedStatistics, statisticsNow, statisticsZone);
+var laterRecordedCells = SaleStatisticsDisplay.Format(recordedStatistics, statisticsNow.AddDays(5), statisticsZone);
+Check(recordedCells.DaysAtObservation == "117" && recordedCells.UpdatedDaysAgo == "3",
+    "the two age columns use sale-to-observation and observation-to-now as different intervals");
+Check(laterRecordedCells.DaysAtObservation == recordedCells.DaysAtObservation && laterRecordedCells.UpdatedDaysAgo == "8",
+    "aging a saved observation never changes the historical age at observation");
+var yearBoundaryStatistics = new SaleStatistics(DateTimeOffset.Parse("2025-12-31T23:15:00Z"), DateTimeOffset.Parse("2026-01-02T00:00:00Z"));
+var yearBoundaryNow = DateTimeOffset.Parse("2026-01-03T00:00:00Z");
+Check(SaleStatisticsDisplay.Format(yearBoundaryStatistics, yearBoundaryNow, statisticsZone) == new SaleStatisticsCells("2026-01-01", "1", "1"),
+    "cross-year dates use the chosen display zone while elapsed days retain their full timestamps");
+Check(SaleStatisticsDisplay.Format(yearBoundaryStatistics, yearBoundaryNow, TimeZoneInfo.Utc).OldestSaleDate == "2025-12-31",
+    "the sale date follows the explicit display zone rather than a hardcoded local date");
+var sameInstantDifferentOffsets = new SaleStatistics(DateTimeOffset.Parse("2026-11-18T15:00:00+08:00"), DateTimeOffset.Parse("2026-11-18T07:00:00Z"));
+Check(SaleStatisticsDisplay.IsValid(sameInstantDifferentOffsets, statisticsNow)
+    && SaleStatisticsDisplay.Format(sameInstantDifferentOffsets, statisticsNow, statisticsZone).DaysAtObservation == "0",
+    "different UTC offsets representing the same instant neither reverse time nor add a day");
+foreach (var invalidStatistics in new[]
+{
+    new SaleStatistics(statisticsNow.AddSeconds(1), null),
+    new SaleStatistics(null, statisticsNow.AddSeconds(1)),
+    new SaleStatistics(statisticsNow.AddDays(-1), statisticsNow.AddDays(-3)),
+    new SaleStatistics(statisticsNow.AddSeconds(1), statisticsNow.AddSeconds(2)),
+})
+{
+    Check(!SaleStatisticsDisplay.IsValid(invalidStatistics, statisticsNow), "future or reversed statistics timestamps are rejected");
+    Check(SaleStatisticsDisplay.Format(invalidStatistics, statisticsNow, statisticsZone) == emptyStatisticsCells,
+        "invalid timestamps never render negative ages or partially plausible data");
+}
+var statisticsJson = System.Text.Json.JsonSerializer.Serialize(recordedStatistics);
+var restoredStatistics = System.Text.Json.JsonSerializer.Deserialize<SaleStatistics>(statisticsJson);
+Check(restoredStatistics == recordedStatistics
+    && SaleStatisticsDisplay.Format(restoredStatistics, statisticsNow, statisticsZone) == recordedCells,
+    "stored statistics round-trip without replacing either timestamp with the current time");
+var missingStatisticsJson = System.Text.Json.JsonSerializer.Deserialize<SaleStatistics>("{}");
+Check(missingStatisticsJson is { OldestSaleAt: null, ObservedAt: null }
+    && SaleStatisticsDisplay.Format(missingStatisticsJson, statisticsNow, statisticsZone) == emptyStatisticsCells,
+    "legacy or missing timestamp fields deserialize as unknown values and remain visually empty");
+var partialStatisticsJson = System.Text.Json.JsonSerializer.Serialize(saleOnly);
+var restoredPartialStatistics = System.Text.Json.JsonSerializer.Deserialize<SaleStatistics>(partialStatisticsJson);
+Check(restoredPartialStatistics?.ObservedAt == null
+    && SaleStatisticsDisplay.Format(restoredPartialStatistics, statisticsNow, statisticsZone).DaysAtObservation == ""
+    && SaleStatisticsDisplay.Format(restoredPartialStatistics, statisticsNow, statisticsZone).UpdatedDaysAgo == "",
+    "nullable statistics persist as unknown ages rather than default dates or zero-day updates");
+var previousStatisticsCulture = System.Globalization.CultureInfo.CurrentCulture;
+try
+{
+    System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("ar-SA");
+    Check(SaleStatisticsDisplay.Format(yearBoundaryStatistics, yearBoundaryNow, statisticsZone) == new SaleStatisticsCells("2026-01-01", "1", "1"),
+        "date and numeric cells retain a stable Gregorian format across current cultures");
+}
+finally { System.Globalization.CultureInfo.CurrentCulture = previousStatisticsCulture; }
+foreach (var uninitializedStatistics in new[]
+{
+    new SaleStatistics(DateTimeOffset.MinValue, null),
+    new SaleStatistics(null, DateTimeOffset.MinValue),
+    new SaleStatistics(DateTimeOffset.UnixEpoch.AddSeconds(-1), null),
+    new SaleStatistics(null, DateTimeOffset.UnixEpoch.AddSeconds(-1)),
+})
+{
+    Check(!SaleStatisticsDisplay.IsValid(uninitializedStatistics, statisticsNow),
+        "default and pre-Unix timestamps are not accepted as recorded market statistics");
+    Check(SaleStatisticsDisplay.Format(uninitializedStatistics, statisticsNow, statisticsZone) == emptyStatisticsCells,
+        "uninitialized dates never leak year-one or pre-Unix placeholder values into the list");
+}
+Check(SaleStatisticsDisplay.IsValid(new(DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch), statisticsNow),
+    "an explicit timestamp exactly at the documented Unix boundary remains valid");
+Check(SaleStatisticsRules.CanReplace(null, recordedStatistics), "a first statistics snapshot can populate a previously unknown item");
+Check(SaleStatisticsRules.CanReplace(recordedStatistics, recordedStatistics with { }),
+    "repeating an identical observation is idempotently accepted");
+Check(SaleStatisticsRules.CanReplace(saleOnly, recordedStatistics),
+    "an old record without an observation timestamp can receive a complete observation");
+Check(SaleStatisticsRules.CanReplace(recordedStatistics, recordedStatistics with { ObservedAt = statisticsNow.AddDays(-2) }),
+    "a newer verified observation may replace an older recorded snapshot");
+Check(!SaleStatisticsRules.CanReplace(recordedStatistics, recordedStatistics with { ObservedAt = statisticsNow.AddDays(-4) }),
+    "a delayed older observation cannot overwrite the current saved statistics");
+Check(!SaleStatisticsRules.CanReplace(recordedStatistics, recordedStatistics with { OldestSaleAt = statisticsNow.AddDays(-100) }),
+    "conflicting sale data at the same observation timestamp cannot overwrite a snapshot");
+Check(!SaleStatisticsRules.CanReplace(recordedStatistics, recordedStatistics with { ObservedAt = null }),
+    "an undated update cannot erase the timestamp of an already observed snapshot");
+Check(SaleStatisticsRules.CanReplace(recordedStatistics, recordedStatistics with
+{
+    OldestSaleAt = recordedStatistics.OldestSaleAt!.Value.ToOffset(TimeSpan.FromHours(8)),
+    ObservedAt = recordedStatistics.ObservedAt!.Value.ToOffset(TimeSpan.FromHours(8)),
+}), "equivalent timestamps expressed with another UTC offset are the same idempotent observation");
+Check(SaleStatisticsDisplay.Format(new(statisticsNow.AddDays(-1).AddTicks(1), statisticsNow), statisticsNow, statisticsZone).DaysAtObservation == "0",
+    "an observation interval one tick short of 24 hours remains zero complete days without floating-point rounding");
+Check(SaleStatisticsDisplay.Format(new(null, statisticsNow.AddDays(-1).AddTicks(1)), statisticsNow, statisticsZone).UpdatedDaysAgo == "0",
+    "update age one tick short of 24 hours also remains zero complete days");
+Check(SaleStatisticsInput.TryParse("{\"itemId\":5187,\"oldestSaleAt\":\"2026-08-01T12:30:00Z\",\"observedAt\":\"2026-11-18T12:30:00Z\"}", out var camelStatisticsInput)
+    && camelStatisticsInput is { ItemId: 5187 }
+    && camelStatisticsInput.OldestSaleAt == DateTimeOffset.Parse("2026-08-01T12:30:00Z")
+    && camelStatisticsInput.ObservedAt == DateTimeOffset.Parse("2026-11-18T12:30:00Z"),
+    "camelCase IPC statistics preserve both explicit UTC timestamps and the item identity");
+Check(SaleStatisticsInput.TryParse("{\"ItemId\":5187,\"OldestSaleAt\":\"2026-08-01T20:30:00+08:00\",\"ObservedAt\":\"2026-11-18T20:30:00+08:00\"}", out var pascalStatisticsInput)
+    && pascalStatisticsInput is { ItemId: 5187 }
+    && pascalStatisticsInput.OldestSaleAt == camelStatisticsInput!.OldestSaleAt
+    && pascalStatisticsInput.ObservedAt == camelStatisticsInput.ObservedAt,
+    "PascalCase IPC properties and explicit UTC offsets resolve to the same recorded instants");
+Check(SaleStatisticsInput.TryParse("{\"itemId\":1005187,\"oldestSaleAt\":null,\"observedAt\":null}", out var hqStatisticsInput)
+    && hqStatisticsInput is { ItemId: 1005187, OldestSaleAt: null, ObservedAt: null },
+    "the statistics parser accepts the raw HQ item encoding for subsequent base-ID normalization");
+Check(SaleStatisticsInput.TryParse("{\"itemId\":5187}", out var missingStatisticsInput)
+    && missingStatisticsInput is { ItemId: 5187, OldestSaleAt: null, ObservedAt: null },
+    "omitted IPC statistics timestamps remain null instead of borrowing the receiver's current time");
+foreach (var invalidStatisticsInput in new string?[]
+{
+    null, "", "   ", "null", "[]", "42", "true", "{", "{}", "{\"itemId\":0}", "{\"itemId\":-1}",
+    "{\"itemId\":\"5187\"}",
+    "{\"itemId\":5187,\"oldestSaleAt\":\"2026-08-01T12:30:00\"}",
+    "{\"itemId\":5187,\"observedAt\":\"2026-11-18T12:30:00\"}",
+    "{\"itemId\":5187,\"oldestSaleAt\":\"2026-08-01Z\"}",
+    "{\"itemId\":5187,\"observedAt\":\"2026-11-18T12:30:00+0800\"}",
+    "{\"itemId\":5187,\"observedAt\":12}",
+    "{\"itemId\":5187,\"oldestSaleAt\":true}",
+    "{\"itemId\":5187,\"oldestSaleAt\":\"2026-02-30T12:30:00Z\"}",
+    "{\"itemId\":5187,\"observedAt\":\"2026-11-18T12:30:00+25:00\"}",
+    "{\"itemId\":5187,\"itemId\":5188}",
+    "{\"itemId\":5187,\"ItemID\":5187}",
+    "{\"itemId\":5187,\"observedAt\":null,\"ObservedAt\":\"2026-11-18T12:30:00Z\"}",
+    "{\"itemId\":5187,\"note\":1,\"NOTE\":2}",
+    "{\"itemId\":5187,\"note\":\"" + new string('x', 2048) + "\"}",
+})
+{
+    Check(!SaleStatisticsInput.TryParse(invalidStatisticsInput, out _),
+        "ambiguous, malformed, oversized, duplicate-property or timezone-free IPC statistics are rejected");
+}
+Check(SaleStatisticsInput.TryParse("{\"itemId\":5187,\"observedAt\":\"2030-01-01T00:00:00Z\"}", out var futureStatisticsInput)
+    && !SaleStatisticsDisplay.IsValid(new(futureStatisticsInput!.OldestSaleAt, futureStatisticsInput.ObservedAt), statisticsNow),
+    "a syntactically valid future date parses but is separately rejected by business timestamp validation");
+Check(SaleStatisticsInput.TryParse("{\"itemId\":5187,\"oldestSaleAt\":\"2026-11-18T12:30:00Z\",\"observedAt\":\"2026-08-01T12:30:00Z\"}", out var reversedStatisticsInput)
+    && !SaleStatisticsDisplay.IsValid(new(reversedStatisticsInput!.OldestSaleAt, reversedStatisticsInput.ObservedAt), statisticsNow),
+    "chronologically reversed dates remain a separate business validation failure after unambiguous parsing");
+Console.WriteLine($"Passed {checks} total checks including sale statistics dates, missing values, complete-day ages and IPC input validation.");
+
+List<SortStatisticsRow> SortStatistics(IEnumerable<SortStatisticsRow> rows, RecycleSortColumn column, bool descending = false)
+    => RecycleSort.Sort(rows, row => row.Name, row => row.Id, row => row.Statistics, column, descending, statisticsNow);
+uint[] SortedStatisticsIds(IEnumerable<SortStatisticsRow> rows, RecycleSortColumn column, bool descending = false)
+    => SortStatistics(rows, column, descending).Select(row => row.Id).ToArray();
+var nameStatisticsRows = new[]
+{
+    new SortStatisticsRow(20, "香蕉", null),
+    new SortStatisticsRow(11, "苹果", null),
+    new SortStatisticsRow(30, "阿尔法", null),
+    new SortStatisticsRow(10, "苹果", null),
+    new SortStatisticsRow(40, "菠萝", null),
+};
+Check(SortedStatisticsIds(nameStatisticsRows, RecycleSortColumn.Name).SequenceEqual(new uint[] { 30, 40, 10, 11, 20 }),
+    "name sorting uses Chinese pinyin rather than Unicode codepoint order and orders equal names by item ID");
+Check(SortedStatisticsIds(nameStatisticsRows, RecycleSortColumn.Name, true).SequenceEqual(new uint[] { 20, 10, 11, 40, 30 }),
+    "descending names reverse name groups while preserving stable ascending item IDs within an equal name");
+Check(nameStatisticsRows.Select(row => row.Id).SequenceEqual(new uint[] { 20, 11, 30, 10, 40 }),
+    "sorting leaves the original collection in its original order");
+var numericStatisticsRows = new[]
+{
+    new SortStatisticsRow(10, "菠萝", new(statisticsNow.AddDays(-20), statisticsNow.AddDays(-10))),
+    new SortStatisticsRow(100, "苹果", new(statisticsNow.AddDays(-101), statisticsNow.AddDays(-1))),
+    new SortStatisticsRow(2, "香蕉", new(statisticsNow.AddDays(-3), statisticsNow.AddDays(-1))),
+};
+Check(SortedStatisticsIds(numericStatisticsRows, RecycleSortColumn.DaysAtObservation).SequenceEqual(new uint[] { 2, 10, 100 }),
+    "age at observation is sorted numerically as 2, 10, 100 rather than lexicographically");
+Check(SortedStatisticsIds(numericStatisticsRows, RecycleSortColumn.DaysAtObservation, true).SequenceEqual(new uint[] { 100, 10, 2 }),
+    "descending age at observation reverses numeric values");
+Check(SortedStatisticsIds(numericStatisticsRows, RecycleSortColumn.UpdatedDaysAgo).SequenceEqual(new uint[] { 100, 2, 10 }),
+    "update-age sorting uses observation-to-now instead of the historical sale-to-observation interval");
+Check(SortedStatisticsIds(numericStatisticsRows, RecycleSortColumn.UpdatedDaysAgo, true).SequenceEqual(new uint[] { 10, 100, 2 }),
+    "equal update ages keep ascending pinyin ties even in descending numeric order");
+Check(SortedStatisticsIds(numericStatisticsRows, RecycleSortColumn.OldestSale).SequenceEqual(new uint[] { 100, 10, 2 }),
+    "oldest-sale ascending order places the chronologically earliest actual sale first");
+Check(SortedStatisticsIds(numericStatisticsRows, RecycleSortColumn.OldestSale, true).SequenceEqual(new uint[] { 2, 10, 100 }),
+    "oldest-sale descending order places the chronologically latest actual sale first");
+var unknownStatisticsRows = new[]
+{
+    new SortStatisticsRow(303, "香蕉", new(statisticsNow.AddDays(-30), statisticsNow.AddSeconds(1))),
+    new SortStatisticsRow(302, "菠萝", new(null, null)),
+    new SortStatisticsRow(301, "阿尔法", null),
+};
+var mixedStatisticsRows = unknownStatisticsRows.Concat(numericStatisticsRows).ToArray();
+foreach (var statisticsColumn in new[] { RecycleSortColumn.OldestSale, RecycleSortColumn.DaysAtObservation, RecycleSortColumn.UpdatedDaysAgo })
+{
+    foreach (var descending in new[] { false, true })
+    {
+        var mixedIds = SortedStatisticsIds(mixedStatisticsRows, statisticsColumn, descending);
+        Check(mixedIds.Take(3).All(id => id < 300) && mixedIds.Skip(3).SequenceEqual(new uint[] { 301, 302, 303 }),
+            "missing and invalid statistics stay after all known values in either direction, with stable pinyin ties");
+    }
+}
+var partialSortRows = numericStatisticsRows.Concat(new[]
+{
+    new SortStatisticsRow(401, "樱桃", new(statisticsNow.AddDays(-4), null)),
+    new SortStatisticsRow(402, "桃子", new(null, statisticsNow.AddDays(-2))),
+}).ToArray();
+Check(SortedStatisticsIds(partialSortRows, RecycleSortColumn.OldestSale).SequenceEqual(new uint[] { 100, 10, 401, 2, 402 }),
+    "a sale-only timestamp can sort by oldest sale while an observation-only record is unknown in that column");
+Check(SortedStatisticsIds(partialSortRows, RecycleSortColumn.DaysAtObservation).SequenceEqual(new uint[] { 2, 10, 100, 402, 401 }),
+    "either missing endpoint makes sale-to-observation age unknown, after complete rows");
+Check(SortedStatisticsIds(partialSortRows, RecycleSortColumn.UpdatedDaysAgo).SequenceEqual(new uint[] { 100, 2, 402, 10, 401 }),
+    "an observation-only timestamp can sort by update age while a sale-only timestamp stays unknown");
+Check(SortedStatisticsIds(partialSortRows, RecycleSortColumn.OldestSale, true).Last() == 402
+    && SortedStatisticsIds(partialSortRows, RecycleSortColumn.UpdatedDaysAgo, true).Last() == 401,
+    "partial records remain unknown-last in descending dates and update ages too");
+var flooredObservationRows = new[]
+{
+    new SortStatisticsRow(602, "香蕉", new(statisticsNow.AddDays(-5).AddHours(-1), statisticsNow.AddDays(-3))),
+    new SortStatisticsRow(601, "苹果", new(statisticsNow.AddDays(-5).AddHours(-23), statisticsNow.AddDays(-3))),
+    new SortStatisticsRow(600, "苹果", new(statisticsNow.AddDays(-5).AddHours(-23), statisticsNow.AddDays(-3))),
+};
+Check(SortedStatisticsIds(flooredObservationRows, RecycleSortColumn.DaysAtObservation).SequenceEqual(new uint[] { 600, 601, 602 }),
+    "ages with the same displayed complete-day value use pinyin and ID ties instead of hidden fractional hours");
+Check(SortedStatisticsIds(flooredObservationRows, RecycleSortColumn.DaysAtObservation, true).SequenceEqual(new uint[] { 600, 601, 602 }),
+    "descending complete-day ages retain the same deterministic ties");
+var flooredUpdateRows = new[]
+{
+    new SortStatisticsRow(611, "香蕉", new(null, statisticsNow.AddDays(-2).AddHours(-1))),
+    new SortStatisticsRow(610, "苹果", new(null, statisticsNow.AddDays(-2).AddHours(-23))),
+};
+Check(SortedStatisticsIds(flooredUpdateRows, RecycleSortColumn.UpdatedDaysAgo).SequenceEqual(new uint[] { 610, 611 })
+    && SortedStatisticsIds(flooredUpdateRows, RecycleSortColumn.UpdatedDaysAgo, true).SequenceEqual(new uint[] { 610, 611 }),
+    "update-age ordering also uses whole days matching the displayed cells in both directions");
+var lastTickObservationRows = new[]
+{
+    new SortStatisticsRow(631, "苹果", new(statisticsNow.AddDays(-1).AddTicks(1), statisticsNow)),
+    new SortStatisticsRow(632, "香蕉", new(statisticsNow, statisticsNow)),
+};
+Check(SortedStatisticsIds(lastTickObservationRows, RecycleSortColumn.DaysAtObservation).SequenceEqual(new uint[] { 631, 632 }),
+    "sorting treats an interval one tick short of a day as the same visible zero-day value as an immediate sale");
+var lastTickUpdateRows = new[]
+{
+    new SortStatisticsRow(641, "苹果", new(null, statisticsNow.AddDays(-1).AddTicks(1))),
+    new SortStatisticsRow(642, "香蕉", new(null, statisticsNow)),
+};
+Check(SortedStatisticsIds(lastTickUpdateRows, RecycleSortColumn.UpdatedDaysAgo).SequenceEqual(new uint[] { 641, 642 }),
+    "sorting uses the same exact tick boundary as the displayed update-age cell");
+var sameDisplayDateRows = new[]
+{
+    new SortStatisticsRow(501, "阿尔法", new(DateTimeOffset.Parse("2026-11-18T15:00:00Z"), null)),
+    new SortStatisticsRow(502, "香蕉", new(DateTimeOffset.Parse("2026-11-18T01:00:00Z"), null)),
+};
+Check(SaleStatisticsDisplay.Format(sameDisplayDateRows[0].Statistics, statisticsNow, statisticsZone).OldestSaleDate
+        == SaleStatisticsDisplay.Format(sameDisplayDateRows[1].Statistics, statisticsNow, statisticsZone).OldestSaleDate
+    && SortedStatisticsIds(sameDisplayDateRows, RecycleSortColumn.OldestSale).SequenceEqual(new uint[] { 502, 501 }),
+    "oldest-sale sorting distinguishes actual instants even when both rendered calendar dates are identical");
+Check(SortedStatisticsIds(sameDisplayDateRows, RecycleSortColumn.OldestSale, true).SequenceEqual(new uint[] { 501, 502 }),
+    "oldest-sale descending order also retains the actual intraday chronology");
+var offsetSortRows = new[]
+{
+    new SortStatisticsRow(521, "香蕉", new(DateTimeOffset.Parse("2026-11-18T07:30:00+08:00"), null)),
+    new SortStatisticsRow(522, "苹果", new(DateTimeOffset.Parse("2026-11-18T00:00:00Z"), null)),
+};
+Check(SortedStatisticsIds(offsetSortRows, RecycleSortColumn.OldestSale).SequenceEqual(new uint[] { 521, 522 }),
+    "date ordering compares UTC instants rather than textual local timestamps with different offsets");
+Check(SortStatistics(Array.Empty<SortStatisticsRow>(), RecycleSortColumn.UpdatedDaysAgo).Count == 0,
+    "an empty recycling list sorts without inventing rows");
+Check(SortedStatisticsIds(new[] { numericStatisticsRows[0] }, RecycleSortColumn.DaysAtObservation, true).SequenceEqual(new uint[] { 10 }),
+    "a singleton recycling list remains unchanged when a sort column is toggled");
+Console.WriteLine($"Passed {checks} total checks including pinyin, date, numeric, missing-value and stable recycling-list sorting.");
+
 sealed class FakeOverlay
 {
     public bool IsOpen { get; set; }
     public bool Operation { get; set; } = true;
     public bool OtherWindowOpen { get; set; } = true;
 }
+
+sealed record SortStatisticsRow(uint Id, string Name, SaleStatistics? Statistics);

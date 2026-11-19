@@ -2,6 +2,12 @@
 
 [中文更新记录](CHANGELOG.zh-CN.md)
 
+## 0.1.5.0 — 2026-11-19
+
+- Show the oldest sale date, days at observation and days since update; leave missing data blank.
+- Click name, date or age headers to switch sorting direction; keep missing data last.
+- Shorten the removal button to Delete and accept item statistics from other plugins.
+
 ## 0.1.4.3 — 2026-11-19
 
 - Skip newly produced items and continue desynthesizing the original list.

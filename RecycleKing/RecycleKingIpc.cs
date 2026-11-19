@@ -10,6 +10,10 @@ internal sealed class RecycleKingIpc(Plugin plugin) : IDisposable
     internal void Register()
     {
         RegisterOnFramework("GetItemIds", () => plugin.Config.ItemIds.ToArray());
+        RegisterOnFramework("GetSaleStatistics", () => JsonSerializer.Serialize(plugin.Config.SaleStatistics
+            .Select(pair => new { itemId = pair.Key, oldestSaleAt = pair.Value.OldestSaleAt, observedAt = pair.Value.ObservedAt })));
+        RegisterOnFramework<string, bool>("SetSaleStatistics", SetSaleStatistics);
+        RegisterOnFramework<string, bool>("AddItemWithSaleStatistics", json => ApplySaleStatistics(json, true));
         RegisterOnFramework<uint, bool>("AddItem", plugin.AddItem);
         RegisterOnFramework<uint, bool>("RemoveItem", plugin.RemoveItem);
         RegisterOnFramework("ClearItems", plugin.Clear);
@@ -54,6 +58,14 @@ internal sealed class RecycleKingIpc(Plugin plugin) : IDisposable
             message = plugin.Armoury.Status,
         },
     });
+
+    private bool SetSaleStatistics(string json) => ApplySaleStatistics(json, false);
+
+    private bool ApplySaleStatistics(string json, bool addIfMissing)
+    {
+        return SaleStatisticsInput.TryParse(json, out var update) && update != null
+            && (addIfMissing ? plugin.AddItemWithSaleStatistics(update) : plugin.SetSaleStatistics(update));
+    }
 
     private void RegisterSync<TResult>(string name, Func<TResult> action)
     {

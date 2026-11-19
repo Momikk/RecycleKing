@@ -8,7 +8,16 @@ using Item = Lumina.Excel.Sheets.Item;
 
 namespace RecycleKing;
 
-internal sealed record RecycleRow(uint Id, uint Icon, string Name, Action<uint> Remove);
+internal sealed record RecycleRow(uint Id, uint Icon, string Name, SaleStatisticsCells Statistics, Action<uint> Remove);
+
+internal static class RecycleListColumns
+{
+    // KamiToolKit reserves 16 pixels for the list's scroll bar.
+    internal static float DateX(float rowWidth) => rowWidth - 280;
+    internal static float DaysX(float rowWidth) => rowWidth - 190;
+    internal static float AgeX(float rowWidth) => rowWidth - 124;
+    internal static float DeleteX(float rowWidth) => rowWidth - 58;
+}
 
 internal sealed unsafe class NativeListWindow : NativeAddon
 {
@@ -23,6 +32,10 @@ internal sealed unsafe class NativeListWindow : NativeAddon
     private int revision = -1;
     private bool confirmClear;
     private bool pendingOpen;
+    private long refreshAgeAfter;
+    private RecycleSortColumn sortColumn = RecycleSortColumn.Name;
+    private bool sortDescending;
+    private readonly Dictionary<RecycleSortColumn, TextNode> sortHeaders = new();
 
     internal NativeListWindow(Plugin plugin)
     {
@@ -71,14 +84,30 @@ internal sealed unsafe class NativeListWindow : NativeAddon
         AddNode(highlight);
         heading = new ResNode { Position = origin + new Vector2(0, 56), Size = new(width, 28) };
         AddNode(heading);
-        foreach (var (label, x, cellWidth) in new[] { ("图标", 0f, 40f), ("物品名称", 44f, width - 156), ("操作", width - 112, 96f) })
+        var rowWidth = width - 16;
+        foreach (var (label, x, cellWidth, column) in new (string, float, float, RecycleSortColumn?)[]
+        {
+            ("图标", 0f, 40f, null),
+            ("物品名称", 44f, RecycleListColumns.DateX(rowWidth) - 50, RecycleSortColumn.Name),
+            ("最早售出", RecycleListColumns.DateX(rowWidth), 86f, RecycleSortColumn.OldestSale),
+            ("距统计", RecycleListColumns.DaysX(rowWidth), 60f, RecycleSortColumn.DaysAtObservation),
+            ("更新距今", RecycleListColumns.AgeX(rowWidth), 60f, RecycleSortColumn.UpdatedDaysAgo),
+            ("操作", RecycleListColumns.DeleteX(rowWidth), 52f, null),
+        })
         {
             var text = new TextNode
             {
-                Position = new(x, 0), Size = new(cellWidth, 28), FontSize = 13,
+                Position = new(x, 0), Size = new(cellWidth, 28),
+                FontSize = column == RecycleSortColumn.UpdatedDaysAgo ? (byte)12 : (byte)13,
                 AlignmentType = AlignmentType.Left, String = label,
             };
             text.AttachNode(heading);
+            if (column is { } sortable)
+            {
+                text.ShowClickableCursor = true;
+                text.AddEvent(AtkEventType.MouseClick, () => ChangeSort(sortable));
+                sortHeaders.Add(sortable, text);
+            }
         }
         list = new ListNode<RecycleRow, RecycleRowNode>
         {
@@ -118,6 +147,7 @@ internal sealed unsafe class NativeListWindow : NativeAddon
     protected override void OnUpdate(AtkUnitBase* addon)
     {
         if (revision != plugin.Revision) { confirmClear = false; Refresh(); }
+        else if (!confirmClear && plugin.Config.SaleStatistics.Count > 0 && Environment.TickCount64 >= refreshAgeAfter) Refresh();
     }
 
     private void Refresh()
@@ -126,11 +156,41 @@ internal sealed unsafe class NativeListWindow : NativeAddon
         if (hideOverlay is not null) hideOverlay.IsChecked = plugin.Config.HideAutoRetainerGcOverlay;
         if (highlight is not null) highlight.IsChecked = plugin.Config.HighlightListedItems;
         var sheet = Plugin.Data.GetExcelSheet<Item>();
-        list.OptionsList = PinyinOrder.Sort(plugin.Config.ItemIds.Select(id => sheet.TryGetRow(id, out var item)
-            ? new RecycleRow(id, item.Icon, item.Name.ExtractText(), plugin.Remove)
-            : new RecycleRow(id, 0, $"未知物品 #{id}", plugin.Remove)), row => row.Name, row => row.Id);
+        var now = DateTimeOffset.UtcNow;
+        list.OptionsList = RecycleSort.Sort(plugin.Config.ItemIds.Select(id => sheet.TryGetRow(id, out var item)
+            ? new RecycleRow(id, item.Icon, item.Name.ExtractText(), Statistics(id), plugin.Remove)
+            : new RecycleRow(id, 0, $"未知物品 #{id}", Statistics(id), plugin.Remove)),
+            row => row.Name, row => row.Id, row => plugin.Config.SaleStatistics.GetValueOrDefault(row.Id),
+            sortColumn, sortDescending, now);
+        SaleStatisticsCells Statistics(uint id) => SaleStatisticsDisplay.Format(plugin.Config.SaleStatistics.GetValueOrDefault(id), now, TimeZoneInfo.Local);
         revision = plugin.Revision;
+        refreshAgeAfter = Environment.TickCount64 + 60_000;
+        UpdateSortHeaders();
         UpdateControls();
+    }
+
+    private void ChangeSort(RecycleSortColumn column)
+    {
+        sortDescending = sortColumn == column && !sortDescending;
+        sortColumn = column;
+        confirmClear = false;
+        Refresh();
+        list?.ResetScroll();
+    }
+
+    private static string SortLabel(RecycleSortColumn column) => column switch
+    {
+        RecycleSortColumn.Name => "物品名称",
+        RecycleSortColumn.OldestSale => "最早售出",
+        RecycleSortColumn.DaysAtObservation => "距统计",
+        RecycleSortColumn.UpdatedDaysAgo => "更新距今",
+        _ => "物品名称",
+    };
+
+    private void UpdateSortHeaders()
+    {
+        foreach (var (column, text) in sortHeaders)
+            text.String = SortLabel(column) + (column == sortColumn ? sortDescending ? "↓" : "↑" : "");
     }
 
     private void UpdateControls()
@@ -139,13 +199,15 @@ internal sealed unsafe class NativeListWindow : NativeAddon
         clear.String = confirmClear ? "确认清空清单" : "清空清单";
         clear.IsEnabled = plugin.Config.ItemIds.Count > 0;
         cancel.IsVisible = confirmClear;
-        count.String = confirmClear ? "再次点击确认清空，仅移除清单记录。" : $"共 {plugin.Config.ItemIds.Count} 种物品 · 拼音排序 · HQ/NQ 合并";
+        var order = (sortColumn == RecycleSortColumn.Name ? "拼音" : SortLabel(sortColumn)) + (sortDescending ? "降序" : "升序");
+        count.String = confirmClear ? "再次点击确认清空，仅移除清单记录。" : $"共 {plugin.Config.ItemIds.Count} 种物品 · {order} · HQ/NQ 合并";
     }
 
     protected override void OnFinalize(AtkUnitBase* addon)
     {
         list?.Dispose(); list = null;
         heading?.Dispose(); heading = null;
+        sortHeaders.Clear();
         count?.Dispose(); count = null;
         clear?.Dispose(); clear = null;
         cancel?.Dispose(); cancel = null;
@@ -166,6 +228,9 @@ internal sealed class RecycleRowNode : ListItemNode<RecycleRow>, IListItemNode
     public static float ItemHeight => 36;
     private readonly IconImageNode icon;
     private readonly TextNode name;
+    private readonly TextNode oldestSale;
+    private readonly TextNode daysAtObservation;
+    private readonly TextNode updatedDaysAgo;
     private readonly TextButtonNode remove;
     private RecycleRow? current;
 
@@ -179,20 +244,33 @@ internal sealed class RecycleRowNode : ListItemNode<RecycleRow>, IListItemNode
             Position = new(44, 0), FontSize = 13, AlignmentType = AlignmentType.Left, TextFlags = TextFlags.Ellipsis,
         };
         name.AttachNode(this);
+        oldestSale = AddText(86);
+        daysAtObservation = AddText(60);
+        updatedDaysAgo = AddText(60);
         remove = new TextButtonNode
         {
-            String = "移出清单", Size = new(90, 28),
+            String = "删除", Size = new(52, 28),
             OnClick = () => { var row = current; row?.Remove(row.Id); },
         };
         remove.AttachNode(this);
     }
 
+    private TextNode AddText(float width)
+    {
+        var node = new TextNode { Size = new(width, 36), FontSize = 12, AlignmentType = AlignmentType.Left };
+        node.AttachNode(this);
+        return node;
+    }
+
     protected override void OnSizeChanged()
     {
         base.OnSizeChanged();
-        if (name is null) return;
-        name.Size = new(Math.Max(1, Width - 148), 36);
-        remove.Position = new(Width - 96, 4);
+        if (name is null || oldestSale is null || daysAtObservation is null || updatedDaysAgo is null || remove is null) return;
+        name.Size = new(Math.Max(1, RecycleListColumns.DateX(Width) - 50), 36);
+        oldestSale.Position = new(RecycleListColumns.DateX(Width), 0);
+        daysAtObservation.Position = new(RecycleListColumns.DaysX(Width), 0);
+        updatedDaysAgo.Position = new(RecycleListColumns.AgeX(Width), 0);
+        remove.Position = new(RecycleListColumns.DeleteX(Width), 4);
     }
 
     protected override void SetNodeData(RecycleRow row)
@@ -201,6 +279,11 @@ internal sealed class RecycleRowNode : ListItemNode<RecycleRow>, IListItemNode
         icon.IconId = row.Icon;
         icon.IsVisible = row.Icon != 0;
         name.String = row.Name;
+        oldestSale.String = row.Statistics.OldestSaleDate;
+        daysAtObservation.String = Days(row.Statistics.DaysAtObservation);
+        updatedDaysAgo.String = Days(row.Statistics.UpdatedDaysAgo);
         TextTooltip = row.Name;
     }
+
+    private static string Days(string value) => value.Length == 0 ? "" : $"{value} 天";
 }

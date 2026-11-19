@@ -45,6 +45,10 @@ public sealed class Plugin : IAsyncDalamudPlugin
     {
         Config = PluginInterface.GetPluginConfig() as Configuration ?? new();
         Config.ItemIds = RecycleList.Normalize(Config.ItemIds ?? []);
+        var now = DateTimeOffset.UtcNow;
+        Config.SaleStatistics = (Config.SaleStatistics ?? []).Where(pair => Config.ItemIds.Contains(pair.Key)
+            && pair.Value != null && SaleStatisticsDisplay.IsValid(pair.Value, now))
+            .ToDictionary(pair => pair.Key, pair => pair.Value);
         itemSnapshot = Config.ItemIds.ToArray();
     }
 
@@ -105,7 +109,9 @@ public sealed class Plugin : IAsyncDalamudPlugin
 
     internal bool RemoveItem(uint id)
     {
-        if (!Config.ItemIds.Remove(RecycleList.BaseId(id))) return false;
+        id = RecycleList.BaseId(id);
+        if (!Config.ItemIds.Remove(id)) return false;
+        Config.SaleStatistics.Remove(id);
         Save();
         return true;
     }
@@ -114,11 +120,33 @@ public sealed class Plugin : IAsyncDalamudPlugin
     {
         if (Config.ItemIds.Count == 0) return false;
         Config.ItemIds.Clear();
+        Config.SaleStatistics.Clear();
         Save();
         return true;
     }
 
     internal bool IsListOpen => window?.IsOpen == true;
+
+    internal bool SetSaleStatistics(SaleStatisticsUpdate update) => ApplySaleStatistics(update, false);
+    internal bool AddItemWithSaleStatistics(SaleStatisticsUpdate update) => ApplySaleStatistics(update, true);
+
+    private bool ApplySaleStatistics(SaleStatisticsUpdate update, bool addIfMissing)
+    {
+        var id = RecycleList.BaseId(update.ItemId);
+        var value = new SaleStatistics(update.OldestSaleAt, update.ObservedAt);
+        if (id is 0 or >= 500_000 || !Data.GetExcelSheet<Item>().TryGetRow(id, out _)
+            || (!addIfMissing && !Config.ItemIds.Contains(id))
+            || !SaleStatisticsDisplay.IsValid(value, DateTimeOffset.UtcNow)) return false;
+        var existing = Config.SaleStatistics.GetValueOrDefault(id);
+        // A delayed caller must not overwrite a newer observation.
+        if (!SaleStatisticsRules.CanReplace(existing, value)) return false;
+        if (Config.ItemIds.Contains(id) && existing == value) return true;
+        if (addIfMissing) RecycleList.Add(Config.ItemIds, id);
+        if (value.OldestSaleAt == null && value.ObservedAt == null) Config.SaleStatistics.Remove(id);
+        else Config.SaleStatistics[id] = value;
+        Save();
+        return true;
+    }
 
     internal bool SetListOpen(bool open)
     {

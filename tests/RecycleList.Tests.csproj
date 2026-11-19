@@ -19,5 +19,7 @@
     <Compile Include="../RecycleKing/DesynthesisReadiness.cs" Link="DesynthesisReadiness.cs" />
     <Compile Include="../RecycleKing/DesynthesisConfirmation.cs" Link="DesynthesisConfirmation.cs" />
     <Compile Include="../RecycleKing/SaleHandoff.cs" Link="SaleHandoff.cs" />
+    <Compile Include="../RecycleKing/SaleStatistics.cs" Link="SaleStatistics.cs" />
+    <Compile Include="../RecycleKing/RecycleSort.cs" Link="RecycleSort.cs" />
   </ItemGroup>
 </Project>
