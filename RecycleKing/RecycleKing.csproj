@@ -1,6 +1,6 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
   <PropertyGroup>
-    <Version>0.1.4.2</Version>
+    <Version>0.1.4.3</Version>
     <Author>Momikk</Author>
     <Name>回收之王 RecycleKing</Name>
     <RepoUrl>https://github.com/Momikk/RecycleKing</RepoUrl>
@@ -12,7 +12,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <CanUnloadAsync>true</CanUnloadAsync>
-    <Changelog>版本 0.1.4.2&#10;·连续出售前等待上一笔交易完成并跨帧确认空闲。&#10;·补充出售菜单、数量确认和超时状态日志。&#10;English&#10;·Wait for a completed sale and confirm idle state on a later frame before continuing.&#10;·Log sale menu selection, quantity confirmation and timeout state.</Changelog>
+    <Changelog>版本 0.1.4.3&#10;·自动分解跳过本批新产出的物品，继续处理原清单。&#10;·向其他插件报告分解完成后保留的产物堆数。&#10;English&#10;·Skip newly produced items and continue desynthesizing the original list.&#10;·Report retained output stacks to other plugins when desynthesis finishes.</Changelog>
     <PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
   </PropertyGroup>
   <ItemGroup>

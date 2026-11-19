@@ -303,6 +303,145 @@ handoffPump.Run(AdvanceSaleHandoff, () => handoffProgress);
 Check(openedNextSale == 1, "repeated pump cannot duplicate released transaction");
 Console.WriteLine($"Passed {checks} total checks including cross-frame sale handoff.");
 
+var output = new DesynthItem(0, 2, 500, 2, 0, "condition:0", "木柴");
+var anotherOutput = output with { Slot = 8, Id = 501, Quantity = 1, Name = "另一种产物" };
+var outputPlan = new DesynthesisScope(1, new[] { a, b });
+Check(outputPlan.ConsumeOne(a.Id, null), "source consumption is acknowledged before admitting desynthesis outputs");
+Check(outputPlan.Match(1, 1, new[] { output, b }) == null, "unverified new output cannot authorize a changed list");
+outputPlan.RecordReceivedOutput(output.Id, output.Quantity);
+Check(outputPlan.Match(1, 1, new[] { output, b }) == new DesynthListMatch(1, 1), "verified output at the front selects the original item at its real native row");
+Check(outputPlan.Match(1, 1, new[] { b, output }) == new DesynthListMatch(0, 1), "verified output after the original item leaves its native row unchanged");
+Check(outputPlan.Head == b && outputPlan.Remaining.Count == 1, "a verified output never joins the captured work plan");
+Check(outputPlan.Match(0, 1, new[] { output, b }) == null && outputPlan.Match(1, 0, new[] { output, b }) == null, "output accounting never permits either category to change");
+Check(outputPlan.Match(1, 1, new[] { output with { Id = 502 }, b }) == null, "a different unverified output ID stops the plan");
+Check(outputPlan.Match(1, 1, new[] { output with { Quantity = 3 }, b }) == null, "visible output quantity cannot exceed acknowledged receipts");
+Check(outputPlan.Match(1, 1, new[] { output with { Quantity = 0 }, b }) == null, "empty output row is rejected");
+Check(outputPlan.Match(1, 1, new[] { output, b with { Quantity = 4 } }) == null, "verified output cannot hide an expanded original stack");
+Check(outputPlan.Match(1, 1, new[] { output, b with { Flags = 0 } }) == null, "verified output cannot hide an original quality swap");
+Check(outputPlan.Match(1, 1, new[] { output, b with { State = "changed" } }) == null, "verified output cannot hide an original equipment state change");
+Check(outputPlan.Match(1, 1, new[] { output, b with { Inventory = 2 } }) == null, "verified output cannot hide an original inventory move");
+Check(outputPlan.Match(1, 1, new[] { output, b with { Slot = 9 } }) == null, "verified output cannot hide an original slot move");
+Check(outputPlan.Match(1, 1, new[] { output with { Inventory = b.Inventory, Slot = b.Slot }, b }) == null, "an output cannot impersonate an original item at its captured slot");
+Check(outputPlan.Match(1, 1, new[] { output, output, b }) == null, "duplicate visible output slots are rejected");
+Check(outputPlan.Match(1, 1, new[] { output with { Quantity = 1 }, output with { Slot = 9, Quantity = 2 }, b }) == null, "split output stacks share the same received quantity budget");
+Check(outputPlan.Match(1, 1, new[] { output with { Quantity = 1 }, output with { Slot = 9, Quantity = 1 }, b }) == null, "splitting a previously bound output stack cannot masquerade as unchanged receipts");
+var splitOutputPlan = new DesynthesisScope(1, new[] { b });
+splitOutputPlan.RecordReceivedOutput(output.Id, 2);
+Check(splitOutputPlan.Match(1, 1, new[] { output with { Quantity = 1 }, output with { Slot = 9, Quantity = 1 }, b }) == new DesynthListMatch(2, 2), "outputs first observed across two slots are counted without selecting either output");
+outputPlan.RecordReceivedOutput(anotherOutput.Id, 1);
+Check(outputPlan.Match(1, 1, new[] { output, anotherOutput, b }) == new DesynthListMatch(2, 2), "multiple verified output types before the original item advance the real native index");
+
+var nextOriginal = a with { Inventory = 2, Slot = 5, Id = 600, Name = "后续家具" };
+var interleavedPlan = new DesynthesisScope(1, new[] { b, nextOriginal });
+interleavedPlan.RecordReceivedOutput(output.Id, 2);
+Check(interleavedPlan.Match(1, 1, new[] { b, output, nextOriginal }) == new DesynthListMatch(0, 1), "verified output between original rows preserves original processing order");
+Check(interleavedPlan.Match(1, 1, new[] { nextOriginal, output, b }) == null, "interleaved verified output never permits original rows to reorder");
+Check(interleavedPlan.Match(1, 1, new[] { output, b }) == null, "interleaved verified output never conceals a missing original row");
+
+outputPlan.RecordReceivedOutput(output.Id, 1);
+Check(outputPlan.Match(1, 1, new[] { output with { Quantity = 3 }, anotherOutput, b }) == new DesynthListMatch(2, 2), "separately acknowledged results accumulate the same output type while previous outputs remain intact");
+Check(outputPlan.Match(1, 1, new[] { output with { Quantity = 4 }, anotherOutput, b }) == null, "accumulated output receipts still enforce their total bound");
+Check(outputPlan.ConsumeOne(b.Id, b with { Quantity = 2 }) && outputPlan.ConsumeOne(b.Id, b with { Quantity = 1 }) && outputPlan.ConsumeOne(b.Id, null), "all original units must still be acknowledged individually");
+Check(outputPlan.Empty && outputPlan.Match(1, 1, new[] { output with { Quantity = 3 }, anotherOutput }) == new DesynthListMatch(-1, 2), "completed original plan reports verified output rows and no selectable head");
+Check(outputPlan.Match(1, 1, Array.Empty<DesynthItem>()) == null, "completed plan cannot ignore disappearance of its previously bound outputs");
+var noOutputCompletionPlan = new DesynthesisScope(1, new[] { a });
+Check(noOutputCompletionPlan.ConsumeOne(a.Id, null) && noOutputCompletionPlan.Match(1, 1, Array.Empty<DesynthItem>()) == new DesynthListMatch(-1, 0), "completed plan that received no visible outputs retains zero output rows");
+Check(outputPlan.Match(1, 1, new[] { output, anotherOutput with { Id = 502 } }) == null, "completed plan does not accept an unrelated remaining row");
+Check(!outputPlan.ConsumeOne(output.Id, null), "completed original plan cannot consume verified output material");
+var freshOutputPlan = new DesynthesisScope(1, new[] { b });
+Check(freshOutputPlan.Match(1, 1, new[] { output, b }) == null, "a fresh batch never inherits the previous batch output receipts");
+Console.WriteLine($"Passed {checks} total checks including verified desynthesis output rows.");
+
+var hqOutput = output with { Slot = 10, Quantity = 3, Flags = 1 };
+var qualityOutputPlan = new DesynthesisScope(1, new[] { b });
+qualityOutputPlan.RecordReceivedOutput(output.Id, 2);
+Check(qualityOutputPlan.Match(1, 1, new[] { hqOutput with { Quantity = 2 }, b }) == null, "NQ receipt cannot authorize an HQ output row of the same base ID");
+qualityOutputPlan.RecordReceivedOutput(1_000_000 + hqOutput.Id, 3);
+Check(qualityOutputPlan.Match(1, 1, new[] { output, hqOutput, b }) == new DesynthListMatch(2, 2), "native HQ encoded result IDs produce a separate verified HQ row");
+Check(qualityOutputPlan.Match(1, 1, new[] { output with { Quantity = 3 }, hqOutput with { Quantity = 2 }, b }) == null, "unused HQ output budget never covers extra NQ quantity");
+Check(qualityOutputPlan.Match(1, 1, new[] { output with { Quantity = 1 }, hqOutput with { Quantity = 4 }, b }) == null, "unused NQ output budget never covers extra HQ quantity");
+var onlyHqOutputPlan = new DesynthesisScope(1, new[] { b });
+onlyHqOutputPlan.RecordReceivedOutput(1_000_000 + output.Id, 2);
+Check(onlyHqOutputPlan.Match(1, 1, new[] { output, b }) == null, "HQ receipt cannot authorize an NQ output row of the same base ID");
+Check(onlyHqOutputPlan.Match(1, 1, new[] { output with { Flags = 1 }, b }) == new DesynthListMatch(1, 1), "normal native HQ encoding preserves the base item with HQ quality");
+var invalidReceiptPlan = new DesynthesisScope(1, new[] { b });
+invalidReceiptPlan.RecordReceivedOutput(2_000_000 + output.Id, 2);
+invalidReceiptPlan.RecordReceivedOutput(0, 2);
+invalidReceiptPlan.RecordReceivedOutput(output.Id, 0);
+invalidReceiptPlan.RecordReceivedOutput(output.Id, -1);
+Check(invalidReceiptPlan.Match(1, 1, new[] { output, b }) == null, "invalid result item types and nonpositive receipt amounts authorize no output");
+
+var heldOutput = output with { Slot = 20, Quantity = 10 };
+var baselineOutputPlan = new DesynthesisScope(1, new[] { b }, new[] { b, heldOutput });
+baselineOutputPlan.RecordReceivedOutput(output.Id, 2);
+Check(baselineOutputPlan.Match(1, 1, new[] { heldOutput, b }) == null, "an initially owned stack with no growth is not a newly verified output row");
+Check(baselineOutputPlan.Match(1, 1, new[] { heldOutput with { Quantity = 11 }, b }) == new DesynthListMatch(1, 1), "only the positive growth above an initial stack counts against output receipts");
+Check(baselineOutputPlan.Match(1, 1, new[] { heldOutput with { Quantity = 12 }, b }) == new DesynthListMatch(1, 1), "a bound output stack may grow within the already acknowledged output budget");
+Check(baselineOutputPlan.Match(1, 1, new[] { heldOutput with { Quantity = 13 }, b }) == null, "initial quantity is deducted without allowing output growth beyond the receipt budget");
+Check(baselineOutputPlan.Match(1, 1, new[] { heldOutput with { Quantity = 12, State = "changed" }, b }) == null, "existing stack growth requires its initial equipment state to remain identical");
+Check(baselineOutputPlan.Match(1, 1, new[] { heldOutput with { Quantity = 12, Flags = 1 }, b }) == null, "existing stack growth cannot switch its initially held quality");
+baselineOutputPlan.RecordReceivedOutput(output.Id, 1);
+Check(baselineOutputPlan.Match(1, 1, new[] { heldOutput with { Quantity = 13 }, b }) == new DesynthListMatch(1, 1), "later native receipts permit further growth of the same bound initial stack");
+var occupiedOutputSlot = heldOutput with { Id = 502, Name = "原有其他物品" };
+var occupiedOutputPlan = new DesynthesisScope(1, new[] { b }, new[] { b, occupiedOutputSlot });
+occupiedOutputPlan.RecordReceivedOutput(output.Id, 2);
+Check(occupiedOutputPlan.Match(1, 1, new[] { heldOutput with { Quantity = 2 }, b }) == null, "a previously occupied unrelated slot cannot be replaced and claimed as a desynthesis output");
+var consumedOutputSlotPlan = new DesynthesisScope(1, new[] { a, b }, new[] { a, b });
+Check(consumedOutputSlotPlan.ConsumeOne(a.Id, null), "acknowledged original consumption releases its original bag slot");
+consumedOutputSlotPlan.RecordReceivedOutput(output.Id, 2);
+Check(consumedOutputSlotPlan.Match(1, 1, new[] { output, b }) == new DesynthListMatch(1, 1), "verified output can legitimately reuse the consumed original item's slot");
+
+var boundOutputPlan = new DesynthesisScope(1, new[] { b });
+boundOutputPlan.RecordReceivedOutput(output.Id, 2);
+Check(boundOutputPlan.Match(1, 1, new[] { output, b }) == new DesynthListMatch(1, 1), "first fully verified output row binds its inventory identity");
+Check(boundOutputPlan.Match(1, 1, new[] { output with { Slot = 11 }, b }) == null, "a bound output moved to another physical slot is rejected without another receipt");
+Check(boundOutputPlan.Match(1, 1, new[] { output with { Inventory = 1 }, b }) == null, "a bound output moved to another bag is rejected without another receipt");
+Check(boundOutputPlan.Match(1, 1, new[] { output with { Flags = 1 }, b }) == null, "a bound output cannot change quality");
+Check(boundOutputPlan.Match(1, 1, new[] { output with { State = "changed" }, b }) == null, "a bound output cannot change its complete equipment state");
+Check(boundOutputPlan.Match(1, 1, new[] { output with { Quantity = 1 }, b }) == null, "a bound output cannot silently lose quantity through manual movement");
+Check(boundOutputPlan.Match(1, 1, new[] { output with { Quantity = 3 }, b }) == null, "a bound output cannot grow before its next native receipt");
+boundOutputPlan.RecordReceivedOutput(output.Id, 1);
+Check(boundOutputPlan.Match(1, 1, new[] { output with { Quantity = 3 }, b }) == new DesynthListMatch(1, 1), "a later acknowledged result permits a bound output to gain exactly its newly received quantity");
+boundOutputPlan.RecordReceivedOutput(anotherOutput.Id, 1);
+Check(boundOutputPlan.Match(1, 1, new[] { output with { Quantity = 3 }, anotherOutput, b }) == new DesynthListMatch(2, 2), "later verified output types may bind new empty slots while old output identity is preserved");
+boundOutputPlan.RecordReceivedOutput(output.Id, 2);
+Check(boundOutputPlan.Match(1, 1, new[] { output with { Quantity = 3 }, output with { Slot = 11 }, anotherOutput, b }) == new DesynthListMatch(3, 3), "later receipts may add a new stack of the same output while the original bound stack stays intact");
+var atomicOutputPlan = new DesynthesisScope(1, new[] { b, nextOriginal });
+atomicOutputPlan.RecordReceivedOutput(output.Id, 2);
+Check(atomicOutputPlan.Match(1, 1, new[] { output, b }) == null, "an output preceding an incomplete original list cannot bind through a failed match");
+Check(atomicOutputPlan.Match(1, 1, new[] { output with { Slot = 11 }, b, nextOriginal }) == new DesynthListMatch(1, 1), "a failed whole-list match leaves no output binding that could poison a later valid observation");
+var invalidOutputPositionPlan = new DesynthesisScope(1, new[] { b });
+invalidOutputPositionPlan.RecordReceivedOutput(output.Id, 2);
+Check(invalidOutputPositionPlan.Match(1, 1, new[] { output with { Inventory = 4 }, b }) == null, "a matching output in a non-bag inventory is never admitted");
+Check(invalidOutputPositionPlan.Match(1, 1, new[] { output with { Slot = 35 }, b }) == null, "a matching output outside normal physical bag slot bounds is never admitted");
+Check(invalidOutputPositionPlan.Match(1, 1, new[] { output with { Slot = -1 }, b }) == null, "a matching output with a negative slot is never admitted");
+Console.WriteLine($"Passed {checks} total checks including output quality, bag baselines, and bound output identities.");
+
+// Simulate the reported list shape; these are synthetic source IDs and slots, not a live-game test.
+var originalFurniture = Enumerable.Range(0, 18)
+    .Select(i => new DesynthItem(0, i, (uint)(40_000 + i), 1, 0, "condition:30000", $"原批家具{i + 1}"))
+    .ToArray();
+var furnitureOutputPlan = new DesynthesisScope(1, originalFurniture, originalFurniture);
+var firewood = new DesynthItem(0, 9, 6494, 1, 0, "condition:0", "木柴");
+for (var i = 0; i < originalFurniture.Length; i++)
+{
+    var furnitureList = i < 10 ? furnitureOutputPlan.Remaining.ToArray()
+        : new[] { firewood }.Concat(furnitureOutputPlan.Remaining).ToArray();
+    Check(furnitureOutputPlan.Head == originalFurniture[i]
+        && furnitureOutputPlan.Match(1, 1, furnitureList) == new DesynthListMatch(i < 10 ? 0 : 1, i < 10 ? 0 : 1),
+        $"18-item scenario keeps original item {i + 1} and skips the leading output after the tenth success");
+    Check(furnitureOutputPlan.ConsumeOne(originalFurniture[i].Id, null), $"18-item scenario acknowledges original item {i + 1} exactly once");
+    if (i == 9)
+    {
+        furnitureOutputPlan.RecordReceivedOutput(firewood.Id, firewood.Quantity);
+        Check(!furnitureOutputPlan.ConsumeOne(firewood.Id, null)
+            && furnitureOutputPlan.Head == originalFurniture[10], "the tenth result's firewood cannot replace the eleventh original item");
+    }
+}
+Check(furnitureOutputPlan.Empty && furnitureOutputPlan.Match(1, 1, new[] { firewood }) == new DesynthListMatch(-1, 1), "18 original furniture items complete with exactly one verified firewood output row left");
+Check(!furnitureOutputPlan.ConsumeOne(firewood.Id, null), "the 18-item scenario never consumes firewood after the original plan completes");
+Console.WriteLine($"Passed {checks} total checks including the simulated 18-item furniture output regression.");
+
 sealed class FakeOverlay
 {
     public bool IsOpen { get; set; }

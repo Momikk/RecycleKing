@@ -44,6 +44,7 @@ internal sealed class RecycleKingIpc(Plugin plugin) : IDisposable
         {
             running = plugin.Desynthesis.IsRunning,
             confirmedItems = plugin.Desynthesis.ConfirmedItems,
+            outputRows = plugin.Desynthesis.OutputRows,
             message = plugin.Desynthesis.Status,
         },
         armouryCleanup = new

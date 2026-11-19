@@ -23,6 +23,10 @@
 
 `GetStatus` 包含 `listOpen`、`highlightListedItems`、`hideAutoRetainerGcOverlay` 和 `showExpertDeliveryLevels`。`batchSale`、`batchDesynthesis`、`armouryCleanup` 各包含 `running`、`confirmedItems` 和 `message`。`batchSale` 另含 `confirmedStacks`。计数来自当前或最近一次成功启动的批次。`message` 是供人阅读的中文提示，调用方可以用布尔值判断是否已启动或正在运行。
 
+0.1.4.3 起，`batchDesynthesis` 另含整数 `outputRows`：原批全部完成后，当前标签页中保留的已核对分解产物行数。它不是产物件数或待处理数；默认值为 `0`，每次成功启动归零，只有正常完成时才赋值。原有“当前标签页已分解完成。”提示保持不变，API 版本仍为 `1`。兼容旧版时将缺失字段视为 `0`。调用方应结合本次成功启动、`running=false`、原批确认件数和正常完成状态判断结束，不要仅凭 `outputRows=0` 判定完成。
+
+Since 0.1.4.3, `batchDesynthesis.outputRows` is an optional integer counting verified output rows left in the current tab after the original batch completes. It defaults to zero, resets on each accepted start, and is assigned only on normal completion. It is not an item-unit or pending-work count. The existing completion message and API version `1` are unchanged. Treat a missing field as zero for older versions, and combine it with the accepted run, running state, confirmed original count and successful completion; zero alone does not prove completion.
+
 使用 `await` 等待接口返回，尤其不要在游戏线程用 `.Result` 或 `.Wait()`。插件未加载时 IPC 可能抛出 `IpcNotReadyError`，卸载期间已排队的调用也可能失败。调用启动接口前应确认调用方自己的触发条件。开始、停止和查询示例：
 
 ```csharp

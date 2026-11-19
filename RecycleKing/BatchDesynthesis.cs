@@ -37,6 +37,7 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
     private enum Phase { Ready, Opening, Submitted, Closing, Refreshing }
     internal string Status { get; private set; } = "尚未启动。";
     internal int ConfirmedItems => completed;
+    internal int OutputRows { get; private set; }
     internal bool IsRunning => scope != null;
 
     internal BatchDesynthesis(Plugin plugin)
@@ -129,11 +130,13 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
             { Notify("上一笔分解仍待核对，请稍后再试。"); return; }
             if (!TryList(selector, agent, out var items)) { Notify("当前分解列表无法核对，未开始。"); return; }
             if (items.Count == 0) { Notify("当前标签页没有可分解物品。"); return; }
-            var plan = new DesynthesisScope((int)selector->SelectedCategory, items);
+            if (!TryReadBags(out var initialBags)) { Notify("背包状态无法核对，未开始。"); return; }
+            var plan = new DesynthesisScope((int)selector->SelectedCategory, items, initialBags);
             character = Plugin.Player.ContentId;
             territory = Plugin.ClientState.TerritoryType;
             agentAddress = (nint)agent;
             completed = 0;
+            OutputRows = 0;
             phase = Phase.Ready;
             deadline = Environment.TickCount64 + 10000;
             scope = plan;
@@ -171,27 +174,33 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
         {
             if (HasConfirmation()) { Stop("出现非本次操作的分解窗口，已停止。"); return; }
             if (!selector->IsVisible) { Stop("分解列表已隐藏，已停止。"); return; }
-            if (!TryList(selector, agent, out var listed) || !plan.Matches((int)agent->SelectedCategory, (int)selector->SelectedCategory, listed))
+            if (!TryList(selector, agent, out var listed) || plan.Match((int)agent->SelectedCategory, (int)selector->SelectedCategory, listed) is not { } match)
             {
                 // The native list can lag the result. Wait without submitting anything.
                 if (phase == Phase.Ready) Stop("当前列表或物品状态已变化，已停止。");
                 return;
             }
-            if (plan.Empty) { Stop("当前标签页已分解完成。", true); return; }
             if (!WaitForIdle()) return;
+            if (plan.Empty)
+            {
+                OutputRows = match.OutputRows;
+                // Preserve the existing completion message for IPC consumers.
+                Stop("当前标签页已分解完成。", true);
+                return;
+            }
             if (!HasBagRoom()) { Stop("背包需要至少三个空格，已停止。"); return; }
             var current = plan.Head;
             if (!InventoryMatches(plan.Remaining, 0)) { Stop("待分解物品已变化，已停止。"); return; }
-            // Submit the first row of the validated native tab, as a normal selection.
+            // Select the first original item at its verified index in the native list.
             // Event kind 0 / values 12,row is the selector's item-selection event.
             AtkValue result = default;
             var values = stackalloc AtkValue[2];
             values[0] = new AtkValue { Type = AtkValueType.Int, Int = 12 };
-            values[1] = new AtkValue { Type = AtkValueType.Int, Int = 0 };
+            values[1] = new AtkValue { Type = AtkValueType.Int, Int = match.HeadIndex };
             phase = Phase.Opening;
             confirmation.Reset();
             deadline = Environment.TickCount64 + 10000;
-            trace.Info("选中物品", Describe(current));
+            trace.Info("选中物品", $"{Describe(current)} row={match.HeadIndex} outputRows={match.OutputRows}");
             agent->ReceiveEvent(&result, values, 2, 0);
             return;
         }
@@ -285,6 +294,12 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
             { Stop("背包状态不可用，已停止。"); return; }
             if (after == head) return; // Acknowledgement can precede the inventory update.
             if (!plan.ConsumeOne(agent->DesynthItemId, after)) { Stop("本次物品数量变化不符，已停止。"); return; }
+            foreach (var output in agent->DesynthResults)
+            {
+                plan.RecordReceivedOutput(output.ItemId, output.Quantity);
+                if (output.ItemId != 0 && output.Quantity > 0)
+                    trace.Info("记录分解产物", $"source={head.Id} item={output.ItemId} quantity={output.Quantity}");
+            }
             completed++;
             trace.Info("确认分解成功", $"{Describe(head)} completed={completed} remaining={plan.Remaining.Count}");
             phase = Phase.Closing;
@@ -385,6 +400,24 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
         return empty >= 3;
     }
 
+    private static bool TryReadBags(out List<DesynthItem> items)
+    {
+        items = [];
+        var manager = InventoryManager.Instance();
+        if (manager == null) return false;
+        for (var page = 0; page < 4; page++)
+        {
+            var bag = manager->GetInventoryContainer((InventoryType)page);
+            if (bag == null || !bag->IsLoaded || (int)bag->Type != page || bag->Size != 35 || bag->Items == null) return false;
+            for (var slot = 0; slot < bag->Size; slot++)
+            {
+                if (!TryReadSlot(page, slot, out var item)) return false;
+                if (item is { } value) items.Add(value);
+            }
+        }
+        return true;
+    }
+
     private static bool ClickNativeButton(AtkUnitBase* addon, AtkComponentButton* button)
     {
         if (button == null || !button->IsEnabled || button->OwnerNode == null) return false;
@@ -431,7 +464,7 @@ internal sealed unsafe class BatchDesynthesis : IDisposable
     private void Stop(string reason, bool normal = false)
     {
         if (!IsRunning) return;
-        var details = $"reason={reason} phase={phase} completed={completed} remaining={scope!.Remaining.Count} occupied39={Plugin.Conditions[ConditionFlag.Occupied39]}";
+        var details = $"reason={reason} phase={phase} completed={completed} remaining={scope!.Remaining.Count} outputRows={OutputRows} occupied39={Plugin.Conditions[ConditionFlag.Occupied39]}";
         if (normal) trace.Info("停止", details); else trace.Warning("停止", details);
         scope = null;
         Notify($"{reason} 已确认分解 {completed} 件。");

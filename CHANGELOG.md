@@ -2,6 +2,11 @@
 
 [中文更新记录](CHANGELOG.zh-CN.md)
 
+## 0.1.4.3 — 2026-11-19
+
+- Skip newly produced items and continue desynthesizing the original list.
+- Report retained output stacks to other plugins when desynthesis finishes.
+
 ## 0.1.4.2 — 2026-11-18
 
 - Wait for a completed sale and confirm idle state on a later frame before continuing.
