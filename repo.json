@@ -1,15 +1,15 @@
 [
   {
     "DownloadCount": 0,
-    "LastUpdate": 1794932315,
+    "LastUpdate": 1795098008,
     "IsTestingExclusive": false,
-    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/40fa13d03b47dca3fefdc8d68cb57bb583ee7b5e/dist/RecycleKing-0.1.4.2.zip",
-    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/40fa13d03b47dca3fefdc8d68cb57bb583ee7b5e/dist/RecycleKing-0.1.4.2.zip",
+    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/a1e8c63149a956c79a7a9427c72bac8f874f50e2/dist/RecycleKing-0.1.4.3.zip",
+    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/a1e8c63149a956c79a7a9427c72bac8f874f50e2/dist/RecycleKing-0.1.4.3.zip",
     "IsHide": false,
     "Author": "Momikk",
     "Name": "回收之王 RecycleKing",
     "InternalName": "RecycleKing",
-    "AssemblyVersion": "0.1.4.2",
+    "AssemblyVersion": "0.1.4.3",
     "Description": "使用原生 UI 管理回收清单，支持批量出售、当前标签自动分解，以及未登记套装装备一键出库。",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/Momikk/RecycleKing",
@@ -25,7 +25,7 @@
     "LoadPriority": 0,
     "IconUrl": "https://raw.githubusercontent.com/Momikk/RecycleKing/main/images/icon.png",
     "Punchline": "管理回收清单，在出售界面批量出售背包废品。",
-    "Changelog": "版本 0.1.4.2\n·连续出售前等待上一笔交易完成并跨帧确认空闲。\n·补充出售菜单、数量确认和超时状态日志。\nEnglish\n·Wait for a completed sale and confirm idle state on a later frame before continuing.\n·Log sale menu selection, quantity confirmation and timeout state.",
+    "Changelog": "版本 0.1.4.3\n·自动分解跳过本批新产出的物品，继续处理原清单。\n·向其他插件报告分解完成后保留的产物堆数。\nEnglish\n·Skip newly produced items and continue desynthesizing the original list.\n·Report retained output stacks to other plugins when desynthesis finishes.",
     "AcceptsFeedback": true
   }
 ]
