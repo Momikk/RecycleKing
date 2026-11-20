@@ -1,8 +1,10 @@
 using System.Numerics;
+using System.Globalization;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Game.Network.Structures;
+using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using FFXIVClientStructs.FFXIV.Client.UI;
@@ -20,6 +22,7 @@ internal sealed unsafe class MarketRefresh : IDisposable
     private const string Result = "ItemSearchResult";
     private const string History = "ItemHistory";
     private const uint MarketBoardNameRow = 2000442;
+    private const uint EmptyListingsTextRow = 1959;
     private const float InteractionRange = 4.5f;
     private const long QueryTimeout = 10_000;
     private const long QueryGap = 1_200;
@@ -49,8 +52,11 @@ internal sealed unsafe class MarketRefresh : IDisposable
     private bool searchSettled;
     private uint armedItem;
     private MarketHistoryLine[]? receivedRows;
+    private MarketOfferPages? offerPages;
+    private MarketOfferRow[]? previousCompleteOffers;
     private SaleStatistics? receipt;
     private bool invalidReceipt;
+    private string emptyListingsText = "";
     private Phase phase;
 
     private enum Phase { Idle, OpeningBoard, Ready, Searching, OpeningResult, ReadingHistory, ClosingHistory, ClosingResult }
@@ -64,6 +70,7 @@ internal sealed unsafe class MarketRefresh : IDisposable
         this.plugin = plugin;
         Plugin.Framework.Update += Update;
         Plugin.MarketBoard.HistoryReceived += ReceiveHistory;
+        Plugin.MarketBoard.OfferingsReceived += ReceiveOfferings;
     }
 
     internal bool Start(uint? itemId)
@@ -97,6 +104,9 @@ internal sealed unsafe class MarketRefresh : IDisposable
                 || Plugin.Conditions[ConditionFlag.Occupied])) return Reject("请等当前操作结束后再更新。");
             var target = TargetSystem.Instance();
             if (currentBoard == default && target == null) return Reject("游戏交互尚未就绪。");
+
+            var addonText = Plugin.Data.GetExcelSheet<Addon>();
+            emptyListingsText = addonText.TryGetRow(EmptyListingsTextRow, out var text) ? text.Text.ExtractText().Trim() : "";
 
             queue = items.ToArray();
             cursor = updated = 0;
@@ -249,14 +259,16 @@ internal sealed unsafe class MarketRefresh : IDisposable
                 { Finish("成交历史窗口归属不符，已停止。"); return; }
                 historyWindow = history;
                 SaleStatistics? data;
+                MarketHistoryLine[]? sales;
                 bool invalid;
-                int countReceived;
-                lock (receiptLock) { data = receipt; invalid = invalidReceipt; countReceived = receivedRows?.Length ?? 0; }
+                lock (receiptLock) { data = receipt; invalid = invalidReceipt; sales = receivedRows; }
                 if (invalid) { Finish("成交历史无法核对，已停止。"); return; }
-                if (data == null) return;
-                var saved = plugin.SetSaleStatistics(new(itemId, data.OldestSaleAt, data.ObservedAt));
+                if (data == null || sales == null) return;
+                if (!TryReadOfferPrices((AddonItemSearchResult*)result.Address, proxy, out var prices)) return;
+                var average = MarketHistory.AverageUnitPrice(prices, sales);
+                var saved = plugin.SetSaleStatistics(new(itemId, data.OldestSaleAt, DateTimeOffset.UtcNow, average));
                 if (saved) updated++; else skipped++;
-                trace.Info("收到成交历史", $"item={itemId} rows={countReceived} saved={saved} oldest={data.OldestSaleAt:O} requestAtOpen={requestIdAtResultOpen} requestNow={proxy->CurrentRequestId}");
+                trace.Info("核对成交与挂牌", $"item={itemId} sales={sales.Length} listings={prices.Length} average={average} saved={saved} oldest={data.OldestSaleAt:O} requestAtOpen={requestIdAtResultOpen} requestNow={proxy->CurrentRequestId}");
                 Disarm();
                 SetPhase(Phase.ClosingHistory);
                 ((AtkUnitBase*)history.Address)->Close(true);
@@ -325,6 +337,81 @@ internal sealed unsafe class MarketRefresh : IDisposable
         bool Known(ushort id) => id == 0 || id == board || id == result;
     }
 
+    private bool TryReadOfferPrices(AddonItemSearchResult* addon, InfoProxyItemSearch* proxy, out uint[] prices)
+    {
+        prices = [];
+        var prior = previousCompleteOffers;
+        previousCompleteOffers = null;
+        var count = proxy->ListingCount;
+        if (count > MarketOfferPages.MaxListings) { Finish("挂牌数量超过可核对范围，已停止。"); return false; }
+
+        var notice = VisibleText(addon->ErrorMessage);
+        var emptyNotice = emptyListingsText.Length != 0 && notice == emptyListingsText;
+        if (notice.Length != 0 && !emptyNotice) { Finish("游戏未完成市场查询，已停止。"); return false; }
+        var hits = ReadHitsCount(addon->HitsMessage);
+        var list = addon->Results;
+        int? displayedRows = list != null && IsShown(list->AtkResNode) ? list->ListLength : null;
+        if (hits.HasValue && hits != count) return false;
+
+        MarketOfferRow[] rows;
+        if (count == 0)
+        {
+            // A history reply can precede all listings. Only a native empty notice proves zero.
+            if (displayedRows is > 0 || !(emptyNotice || HasEmptyNotice(addon))) return false;
+            rows = [];
+        }
+        else
+        {
+            if (emptyNotice || displayedRows == null || (hits == null && displayedRows != count)) return false;
+            rows = new MarketOfferRow[count];
+            for (var i = 0; i < rows.Length; i++)
+            {
+                var listing = proxy->Listings[i];
+                rows[i] = new(listing.ItemId, listing.ListingId, listing.RetainerId, listing.Quantity, listing.UnitPrice, listing.IsHqItem);
+            }
+            lock (receiptLock)
+            {
+                if (offerPages?.MatchesComplete(rows) != true) return false;
+            }
+        }
+
+        previousCompleteOffers = rows;
+        if (prior == null || !prior.SequenceEqual(rows)) return false;
+        prices = rows.Select(row => row.UnitPrice).ToArray();
+        return true;
+    }
+
+    private bool HasEmptyNotice(AddonItemSearchResult* addon)
+    {
+        if (emptyListingsText.Length == 0 || addon->UldManager.NodeList == null
+            || addon->UldManager.NodeListCount is 0 or > 256) return false;
+        for (var i = 0; i < addon->UldManager.NodeListCount; i++)
+        {
+            var node = addon->UldManager.NodeList[i];
+            if (node != null && node->Type == NodeType.Text && VisibleText((AtkTextNode*)node) == emptyListingsText) return true;
+        }
+        return false;
+    }
+
+    private static uint? ReadHitsCount(AtkTextNode* node)
+    {
+        var text = VisibleText(node).AsSpan();
+        var start = text.Length;
+        while (start > 0 && char.IsAsciiDigit(text[start - 1])) start--;
+        return uint.TryParse(text[start..], NumberStyles.None, CultureInfo.InvariantCulture, out var count) ? count : null;
+    }
+
+    private static string VisibleText(AtkTextNode* node) => node != null && IsShown(&node->AtkResNode)
+        ? SeString.Parse(node->NodeText.AsSpan()).TextValue.Trim() : "";
+
+    private static bool IsShown(AtkResNode* node)
+    {
+        if (node == null) return false;
+        for (var depth = 0; node != null && depth < 32; depth++, node = node->ParentNode)
+            if (!node->IsVisible()) return false;
+        return node == null;
+    }
+
     private static IGameObject? FindBoard(IGameObject player)
     {
         var names = Plugin.Data.GetExcelSheet<EObjName>();
@@ -376,16 +463,34 @@ internal sealed unsafe class MarketRefresh : IDisposable
 
     private void Arm(uint id)
     {
+        previousCompleteOffers = null;
         lock (receiptLock)
         {
             armedItem = id;
             receivedRows = null;
+            offerPages = id == 0 ? null : new MarketOfferPages(id);
             receipt = null;
             invalidReceipt = false;
         }
     }
 
     private void Disarm() => Arm(0);
+
+    private void ReceiveOfferings(IMarketBoardCurrentOfferings response)
+    {
+        lock (receiptLock)
+        {
+            if (offerPages == null) return;
+            try
+            {
+                var rows = response.ItemListings.Take(MarketOfferPages.MaxListings + 1)
+                    .Select(row => new MarketOfferRow(row.ItemId, row.ListingId, row.RetainerId,
+                        row.ItemQuantity, row.PricePerUnit, row.IsHq)).ToArray();
+                offerPages.Observe(response.RequestId, rows);
+            }
+            catch (Exception error) { Plugin.Log.Warning(error, "读取原生市场在售页失败。"); }
+        }
+    }
 
     private void ReceiveHistory(IMarketBoardHistory response)
     {
@@ -426,6 +531,7 @@ internal sealed unsafe class MarketRefresh : IDisposable
     {
         Plugin.Framework.Update -= Update;
         Plugin.MarketBoard.HistoryReceived -= ReceiveHistory;
+        Plugin.MarketBoard.OfferingsReceived -= ReceiveOfferings;
         Disarm();
         phase = Phase.Idle;
         queue = [];

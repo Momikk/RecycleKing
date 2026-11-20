@@ -785,6 +785,197 @@ Check(MarketHistory.TrySummarize(5187, 5187, new[] { goodHistoryLine with { Purc
     "a purchase exactly at the supplied observation time is accepted without replacing that timestamp with the current clock");
 Console.WriteLine($"Passed {checks} total checks including bounded native market history and oldest-sale observation.");
 
+MarketHistoryLine AverageHistory(uint price, uint quantity = 1)
+    => new(historyObservedAt.UtcDateTime.AddDays(-1), quantity, price);
+var unequalAverageHistory = new[] { AverageHistory(100, 999), AverageHistory(200, 2) };
+Check(MarketHistory.AverageUnitPrice(new uint[] { 10, 20, 30, 40, 50 }, unequalAverageHistory) == 450m / 7m,
+    "average price weights each of five listings and two sale rows equally instead of averaging the two group means");
+Check(MarketHistory.AverageUnitPrice(new uint[] { 100 }, new[] { AverageHistory(10, 999), AverageHistory(20, 1), AverageHistory(30, 500) }) == 40m,
+    "one listing and three sale rows contribute four equal samples regardless of sold stack quantities");
+var excessAverageListings = new uint[] { 900, 9, 7, 8, 6, 5, 9999 };
+var excessAverageListingsBefore = excessAverageListings.ToArray();
+Check(MarketHistory.AverageUnitPrice(excessAverageListings, Array.Empty<MarketHistoryLine>()) == 7m,
+    "complete listings are sorted by unit price and only their five cheapest actual rows enter the average");
+Check(excessAverageListings.SequenceEqual(excessAverageListingsBefore),
+    "selecting five cheapest prices does not reorder the caller's completed listing array");
+Check(MarketHistory.AverageUnitPrice(new uint[] { 1, 1, 2, 3, 4, 5 }, Array.Empty<MarketHistoryLine>()) == 11m / 5m,
+    "equal-price listing rows remain separate samples rather than selecting five distinct prices");
+Check(MarketHistory.AverageUnitPrice(new uint[] { 1, 2, 3, 4, 5 }, Array.Empty<MarketHistoryLine>()) == 3m,
+    "exactly five listings can form an average without historical sales");
+Check(MarketHistory.AverageUnitPrice(new uint[] { 10, 20, 30 }, Array.Empty<MarketHistoryLine>()) == 20m,
+    "fewer than five available listing rows use their actual count without zero padding");
+Check(MarketHistory.AverageUnitPrice(new uint[] { 10, 20, 30 }, new[] { AverageHistory(40) }) == 25m,
+    "a short listing side and available historical rows share one combined sample denominator");
+Check(MarketHistory.AverageUnitPrice(Array.Empty<uint>(), fullMarketHistory) == 19.5m,
+    "without listings every one of the twenty returned historical rows still contributes its unit price");
+Check(MarketHistory.AverageUnitPrice(Array.Empty<uint>(), Array.Empty<MarketHistoryLine>()) == null,
+    "a response with no listing or historical samples has no average rather than a zero price");
+Check(MarketHistory.AverageUnitPrice(Array.Empty<uint>(), new[] { AverageHistory(10), AverageHistory(10), AverageHistory(100) }) == 40m,
+    "identical real sale rows are not deduplicated before averaging");
+var preciseAveragePrice = MarketHistory.AverageUnitPrice(new uint[] { 1, 1, 2 }, Array.Empty<MarketHistoryLine>());
+Check(preciseAveragePrice == 4m / 3m && preciseAveragePrice != decimal.Round(preciseAveragePrice!.Value, 2),
+    "the stored average keeps decimal precision rather than rounding to its two-digit display value");
+Check(MarketHistory.AverageUnitPrice(Enumerable.Repeat(uint.MaxValue, 5).ToArray(),
+        Enumerable.Repeat(AverageHistory(uint.MaxValue, uint.MaxValue), 20).ToArray()) == uint.MaxValue,
+    "summing listing and sale prices above the uint range does not overflow or use quantity weighting");
+var displayedAverageStatistics = new SaleStatistics(null, null, 1234.56789m);
+Check(SaleStatisticsDisplay.Format(displayedAverageStatistics, statisticsNow, statisticsZone)
+        == new SaleStatisticsCells("", "", "", "1,234.57"),
+    "average price has grouped invariant display text while unknown date columns stay blank");
+Check(SaleStatisticsDisplay.Format(new(null, null, 1234.5m), statisticsNow, statisticsZone).AverageUnitPrice == "1,234.5",
+    "average display omits unnecessary trailing decimal zeros");
+Check(SaleStatisticsDisplay.Format(new(null, null), statisticsNow, statisticsZone).AverageUnitPrice == "",
+    "an unknown average remains empty instead of displaying a zero price");
+var averageStatisticsJson = System.Text.Json.JsonSerializer.Serialize(displayedAverageStatistics);
+Check(System.Text.Json.JsonSerializer.Deserialize<SaleStatistics>(averageStatisticsJson) == displayedAverageStatistics,
+    "configuration serialization retains the unrounded average unit price");
+Check(SaleStatisticsInput.TryParse("{\"itemId\":5187,\"observedAt\":\"2026-11-18T12:30:00Z\"}", out var legacyAverageInput)
+    && legacyAverageInput?.AverageUnitPrice == null,
+    "legacy IPC JSON that omits the new average field remains compatible with unknown pricing");
+Check(SaleStatisticsInput.TryParse("{\"itemId\":5187,\"averageUnitPrice\":null}", out var nullAverageInput)
+    && nullAverageInput?.AverageUnitPrice == null,
+    "an explicitly null IPC average remains unknown");
+Check(SaleStatisticsInput.TryParse("{\"itemId\":5187,\"averageUnitPrice\":1234.56789}", out var numericAverageInput)
+    && numericAverageInput?.AverageUnitPrice == 1234.56789m,
+    "a numeric IPC average retains decimal precision without a display-rounding round trip");
+Check(SaleStatisticsInput.TryParse("{\"ItemId\":1005187,\"AverageUnitPrice\":2.5}", out var pascalAverageInput)
+    && pascalAverageInput is { ItemId: 1005187, AverageUnitPrice: 2.5m },
+    "the new average field respects existing case-insensitive properties and raw HQ item IDs");
+foreach (var invalidAverageInput in new[]
+{
+    "{\"itemId\":5187,\"averageUnitPrice\":\"12.34\"}",
+    "{\"itemId\":5187,\"averageUnitPrice\":true}",
+    "{\"itemId\":5187,\"averageUnitPrice\":[]}",
+    "{\"itemId\":5187,\"averageUnitPrice\":{}}",
+    "{\"itemId\":5187,\"averageUnitPrice\":1,\"AverageUnitPrice\":2}",
+})
+{
+    Check(!SaleStatisticsInput.TryParse(invalidAverageInput, out _),
+        "string-valued, nonnumeric or duplicate average-price IPC fields are rejected");
+}
+var averagePriceRows = new[]
+{
+    new SortStatisticsRow(710, "菠萝", new(null, null, 10m)),
+    new SortStatisticsRow(712, "苹果", new(null, null, 1000m)),
+    new SortStatisticsRow(702, "香蕉", new(null, null, 2m)),
+};
+Check(SortedStatisticsIds(averagePriceRows, RecycleSortColumn.AverageUnitPrice).SequenceEqual(new uint[] { 702, 710, 712 }),
+    "average-price sorting compares numeric values rather than grouped display strings such as 1,000, 10 and 2");
+Check(SortedStatisticsIds(averagePriceRows, RecycleSortColumn.AverageUnitPrice, true).SequenceEqual(new uint[] { 712, 710, 702 }),
+    "average-price descending order reverses known numeric prices");
+var sameDisplayedAverageRows = new[]
+{
+    new SortStatisticsRow(721, "苹果", new(null, null, 1.2344m)),
+    new SortStatisticsRow(722, "香蕉", new(null, null, 1.2341m)),
+};
+Check(SaleStatisticsDisplay.Format(sameDisplayedAverageRows[0].Statistics, statisticsNow, statisticsZone).AverageUnitPrice
+        == SaleStatisticsDisplay.Format(sameDisplayedAverageRows[1].Statistics, statisticsNow, statisticsZone).AverageUnitPrice
+    && SortedStatisticsIds(sameDisplayedAverageRows, RecycleSortColumn.AverageUnitPrice).SequenceEqual(new uint[] { 722, 721 }),
+    "different unrounded average prices retain numeric order even when both displayed values are 1.23");
+Check(SortedStatisticsIds(sameDisplayedAverageRows, RecycleSortColumn.AverageUnitPrice, true).SequenceEqual(new uint[] { 721, 722 }),
+    "descending average sorting also preserves hidden decimal precision rather than falling back to name ties");
+var unknownAverageRows = new[]
+{
+    new SortStatisticsRow(733, "香蕉", new(null, statisticsNow.AddSeconds(1), 1m)),
+    new SortStatisticsRow(732, "菠萝", new(null, null)),
+    new SortStatisticsRow(731, "阿尔法", null),
+};
+foreach (var descendingAverage in new[] { false, true })
+{
+    var mixedAverageIds = SortedStatisticsIds(unknownAverageRows.Concat(averagePriceRows), RecycleSortColumn.AverageUnitPrice, descendingAverage);
+    Check(mixedAverageIds.Take(3).All(id => id < 730) && mixedAverageIds.Skip(3).SequenceEqual(new uint[] { 731, 732, 733 }),
+        "unknown or otherwise invalid average statistics remain at the end in both price-sort directions");
+}
+var equalAverageRows = new[]
+{
+    new SortStatisticsRow(742, "香蕉", new(null, null, 5m)),
+    new SortStatisticsRow(741, "苹果", new(null, null, 5m)),
+    new SortStatisticsRow(740, "苹果", new(null, null, 5m)),
+};
+Check(SortedStatisticsIds(equalAverageRows, RecycleSortColumn.AverageUnitPrice).SequenceEqual(new uint[] { 740, 741, 742 })
+    && SortedStatisticsIds(equalAverageRows, RecycleSortColumn.AverageUnitPrice, true).SequenceEqual(new uint[] { 740, 741, 742 }),
+    "identical exact average prices keep pinyin and item-ID ties stable in either sort direction");
+Console.WriteLine($"Passed {checks} total checks including equal-sample average pricing, IPC compatibility and decimal price sorting.");
+
+var offerA = new MarketOfferRow(5187, (1UL << 40) + 1001, (1UL << 48) + 2001, 99, 10, false);
+var offerB = new MarketOfferRow(5187, (2UL << 40) + 1001, (2UL << 48) + 2001, 1, 20, true);
+var offerC = new MarketOfferRow(5187, (3UL << 40) + 1001, (3UL << 48) + 2001, 2, 30, false);
+var allNativeOffers = new[] { offerA, offerB, offerC };
+var pagedOffers = new MarketOfferPages(5187);
+pagedOffers.Observe(7, new[] { offerA, offerB });
+Check(!pagedOffers.MatchesComplete(allNativeOffers),
+    "one received offering page cannot prove a larger native result list is complete");
+pagedOffers.Observe(7, new[] { offerC });
+Check(pagedOffers.MatchesComplete(allNativeOffers),
+    "all pages from the same request can prove the complete native offering list");
+Check(pagedOffers.MatchesComplete(new[] { offerC, offerA, offerB }),
+    "a complete offering proof compares actual rows without imposing their page or native display order");
+Check(!pagedOffers.MatchesComplete(new[] { offerA, offerB }),
+    "a partial native subset cannot be substituted for the complete three-row response");
+pagedOffers.Observe(7, new[] { offerA });
+Check(pagedOffers.MatchesComplete(allNativeOffers) && !pagedOffers.MatchesComplete(new[] { offerA }),
+    "a repeated single page preserves the whole accumulated request instead of replacing it");
+var separateOfferRequests = new MarketOfferPages(5187);
+separateOfferRequests.Observe(1, new[] { offerA });
+separateOfferRequests.Observe(2, new[] { offerB, offerC });
+Check(!separateOfferRequests.MatchesComplete(allNativeOffers),
+    "complementary offering pages from different request IDs never combine into one complete proof");
+separateOfferRequests.Observe(1, new[] { offerB, offerC });
+Check(separateOfferRequests.MatchesComplete(allNativeOffers),
+    "one independent request can become complete without borrowing any rows from another request");
+var duplicateOfferPages = new MarketOfferPages(5187);
+duplicateOfferPages.Observe(0, new[] { offerA, offerA });
+duplicateOfferPages.Observe(0, new[] { offerA });
+Check(duplicateOfferPages.MatchesComplete(new[] { offerA }),
+    "repeated identical listing IDs count once across and within response pages");
+Check(!duplicateOfferPages.MatchesComplete(new[] { offerA, offerA }),
+    "duplicate native listing IDs cannot inflate the completed listing count");
+var conflictingOfferPages = new MarketOfferPages(5187);
+conflictingOfferPages.Observe(4, new[] { offerA, offerB });
+conflictingOfferPages.Observe(4, new[] { offerA with { UnitPrice = 11 } });
+Check(!conflictingOfferPages.MatchesComplete(new[] { offerA, offerB })
+    && !conflictingOfferPages.MatchesComplete(new[] { offerA with { UnitPrice = 11 }, offerB }),
+    "conflicting data for the same listing ID invalidates that request rather than choosing either version");
+Check(pagedOffers.MatchesComplete(allNativeOffers),
+    "full 64-bit listing and retainer IDs remain distinct even when their lower 32 bits collide");
+Check(!pagedOffers.MatchesComplete(new[] { offerA, offerB with { RetainerId = offerA.RetainerId }, offerC }),
+    "retainer identity uses the complete 64-bit field rather than a truncated display value");
+Check(!pagedOffers.MatchesComplete(new[] { offerA, offerB with { Quantity = 2 }, offerC })
+    && !pagedOffers.MatchesComplete(new[] { offerA, offerB with { UnitPrice = 21 }, offerC })
+    && !pagedOffers.MatchesComplete(new[] { offerA, offerB with { HighQuality = false }, offerC }),
+    "native quantity, unit price and HQ flag must each match the received complete offering row");
+foreach (var invalidOfferRow in new[]
+{
+    offerA with { ItemId = 5188 },
+    offerA with { ItemId = 0 },
+    offerA with { ListingId = 0 },
+    offerA with { RetainerId = 0 },
+    offerA with { Quantity = 0 },
+    offerA with { UnitPrice = 0 },
+    offerA with { ItemId = 1005187, HighQuality = true },
+})
+{
+    var invalidOfferPages = new MarketOfferPages(5187);
+    invalidOfferPages.Observe(3, new[] { invalidOfferRow });
+    Check(!invalidOfferPages.MatchesComplete(new[] { invalidOfferRow }) && !invalidOfferPages.MatchesComplete(new[] { offerA }),
+        "wrong, zero or HQ-encoded item identities and zero offering fields cannot prove native listings");
+}
+var zeroItemOfferPages = new MarketOfferPages(0);
+zeroItemOfferPages.Observe(3, new[] { offerA with { ItemId = 0 } });
+Check(!zeroItemOfferPages.MatchesComplete(new[] { offerA with { ItemId = 0 } }),
+    "a zero expected item ID cannot make a zero response item ID valid");
+var emptyOfferPages = new MarketOfferPages(5187);
+emptyOfferPages.Observe(3, Array.Empty<MarketOfferRow>());
+Check(!emptyOfferPages.MatchesComplete(Array.Empty<MarketOfferRow>()),
+    "an empty network page alone never proves that the native market has zero listings");
+var samePriceDifferentOffers = new MarketOfferPages(5187);
+var anotherActualOffer = offerA with { ListingId = offerB.ListingId };
+samePriceDifferentOffers.Observe(3, new[] { offerA, anotherActualOffer });
+Check(samePriceDifferentOffers.MatchesComplete(new[] { offerA, anotherActualOffer })
+    && !samePriceDifferentOffers.MatchesComplete(new[] { offerA }),
+    "different actual listing IDs remain separate equal-price samples even when every other field matches");
+Console.WriteLine($"Passed {checks} total checks including complete native offering pages and strict request identities.");
+
 sealed class FakeOverlay
 {
     public bool IsOpen { get; set; }

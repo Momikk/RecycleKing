@@ -3,16 +3,17 @@ using System.Text.Json;
 
 namespace RecycleKing;
 
-public sealed record SaleStatistics(DateTimeOffset? OldestSaleAt = null, DateTimeOffset? ObservedAt = null);
+public sealed record SaleStatistics(DateTimeOffset? OldestSaleAt = null, DateTimeOffset? ObservedAt = null, decimal? AverageUnitPrice = null);
 
-internal readonly record struct SaleStatisticsCells(string OldestSaleDate, string DaysAtObservation, string UpdatedDaysAgo);
+internal readonly record struct SaleStatisticsCells(string OldestSaleDate, string DaysAtObservation, string UpdatedDaysAgo, string AverageUnitPrice = "");
 
 internal static class SaleStatisticsDisplay
 {
     internal static bool IsValid(SaleStatistics value, DateTimeOffset now)
         => (value.OldestSaleAt is not { } oldest || (oldest >= DateTimeOffset.UnixEpoch && oldest <= now))
             && (value.ObservedAt is not { } observed || (observed >= DateTimeOffset.UnixEpoch && observed <= now))
-            && (value.OldestSaleAt is not { } first || value.ObservedAt is not { } last || first <= last);
+            && (value.OldestSaleAt is not { } first || value.ObservedAt is not { } last || first <= last)
+            && value.AverageUnitPrice is null or (> 0 and <= uint.MaxValue);
 
     internal static SaleStatisticsCells Format(SaleStatistics? value, DateTimeOffset now, TimeZoneInfo zone)
     {
@@ -22,7 +23,8 @@ internal static class SaleStatisticsDisplay
         var atObservation = value.OldestSaleAt is { } first && value.ObservedAt is { } observed
             ? Days(observed - first) : "";
         var age = value.ObservedAt is { } updated ? Days(now - updated) : "";
-        return new(date, atObservation, age);
+        var average = value.AverageUnitPrice?.ToString("#,##0.##", CultureInfo.InvariantCulture) ?? "";
+        return new(date, atObservation, age, average);
     }
 
     private static string Days(TimeSpan span) => (span.Ticks / TimeSpan.TicksPerDay).ToString(CultureInfo.InvariantCulture);
@@ -35,7 +37,7 @@ internal static class SaleStatisticsRules
             || (next.ObservedAt is { } updated && updated > prior);
 }
 
-internal sealed record SaleStatisticsUpdate(uint ItemId, DateTimeOffset? OldestSaleAt, DateTimeOffset? ObservedAt);
+internal sealed record SaleStatisticsUpdate(uint ItemId, DateTimeOffset? OldestSaleAt, DateTimeOffset? ObservedAt, decimal? AverageUnitPrice = null);
 
 internal static class SaleStatisticsInput
 {

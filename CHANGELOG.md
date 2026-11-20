@@ -2,6 +2,11 @@
 
 [中文更新记录](CHANGELOG.zh-CN.md)
 
+## 0.1.7.0 — 2026-11-21
+
+- Show a sortable average unit price using the five cheapest listings and all sales returned by the query.
+- Allow other plugins to read or submit the average price. Missing values stay blank.
+
 ## 0.1.6.2 — 2026-11-21
 
 - Fix updates stopping when sale history arrives before the listing results.

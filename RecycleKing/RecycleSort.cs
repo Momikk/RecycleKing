@@ -1,6 +1,6 @@
 namespace RecycleKing;
 
-internal enum RecycleSortColumn { Name, OldestSale, DaysAtObservation, UpdatedDaysAgo }
+internal enum RecycleSortColumn { Name, OldestSale, AverageUnitPrice, DaysAtObservation, UpdatedDaysAgo }
 
 internal static class RecycleSort
 {
@@ -17,12 +17,13 @@ internal static class RecycleSort
             .Select(value => value.Row).ToList();
     }
 
-    private static long? Key(SaleStatistics? statistics, RecycleSortColumn column, DateTimeOffset now)
+    private static decimal? Key(SaleStatistics? statistics, RecycleSortColumn column, DateTimeOffset now)
     {
         if (statistics == null || !SaleStatisticsDisplay.IsValid(statistics, now)) return null;
         return column switch
         {
             RecycleSortColumn.OldestSale => statistics.OldestSaleAt?.UtcTicks,
+            RecycleSortColumn.AverageUnitPrice => statistics.AverageUnitPrice,
             RecycleSortColumn.DaysAtObservation when statistics is { OldestSaleAt: { } oldest, ObservedAt: { } observed }
                 => (observed - oldest).Ticks / TimeSpan.TicksPerDay,
             RecycleSortColumn.UpdatedDaysAgo when statistics.ObservedAt is { } updated

@@ -63,7 +63,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
         {
             window = new NativeListWindow(this)
             {
-                InternalName = "RecycleKingList", Title = "回收之王", Size = new(600, 530),
+                InternalName = "RecycleKingList", Title = "回收之王", Size = new(696, 530),
             };
             Sales = new BatchSale(this);
             Desynthesis = new BatchDesynthesis(this);
@@ -137,7 +137,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
     private bool ApplySaleStatistics(SaleStatisticsUpdate update, bool addIfMissing)
     {
         var id = RecycleList.BaseId(update.ItemId);
-        var value = new SaleStatistics(update.OldestSaleAt, update.ObservedAt);
+        var value = new SaleStatistics(update.OldestSaleAt, update.ObservedAt, update.AverageUnitPrice);
         if (id is 0 or >= 500_000 || !Data.GetExcelSheet<Item>().TryGetRow(id, out _)
             || (!addIfMissing && !Config.ItemIds.Contains(id))
             || !SaleStatisticsDisplay.IsValid(value, DateTimeOffset.UtcNow)) return false;
@@ -146,7 +146,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
         if (!SaleStatisticsRules.CanReplace(existing, value)) return false;
         if (Config.ItemIds.Contains(id) && existing == value) return true;
         if (addIfMissing) RecycleList.Add(Config.ItemIds, id);
-        if (value.OldestSaleAt == null && value.ObservedAt == null) Config.SaleStatistics.Remove(id);
+        if (value == new SaleStatistics()) Config.SaleStatistics.Remove(id);
         else Config.SaleStatistics[id] = value;
         Save();
         return true;

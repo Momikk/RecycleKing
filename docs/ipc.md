@@ -32,22 +32,24 @@ Since 0.1.4.3, `batchDesynthesis.outputRows` is an optional integer counting ver
 
 ### 成交统计（0.1.5.0）
 
-`AddItemWithSaleStatistics` 和 `SetSaleStatistics` 接受同一 JSON 对象：`itemId` 为物品 ID（接受 HQ 编码，按基础 ID 保存）；`oldestSaleAt` 为这次统计实际读到的最早成交时间；`observedAt` 为实际统计时间。两个时间使用带时区的 ISO 8601 字符串，也可为 `null`，不得用调用或保存时间冒充缺失的统计时间。没有统计时三个显示值留空；只有一个时间时仅显示能算出的单元格。日期按本机时区显示，天数取完整的 24 小时，不按日期跨零点计天。第二列用 `observedAt - oldestSaleAt`，第三列用当前时间减 `observedAt`，不改变原始统计时间。
+`AddItemWithSaleStatistics` 和 `SetSaleStatistics` 接受同一 JSON 对象。`itemId` 为物品 ID，接受 HQ 编码，按基础 ID 保存。`oldestSaleAt` 为这次统计实际读到的最早成交时间，`observedAt` 为实际统计时间。两个时间使用带时区的 ISO 8601 字符串，也可为 `null`。日期按本机时区显示，天数取完整的 24 小时。“距统计”用 `observedAt - oldestSaleAt`，“更新距今”用当前时间减 `observedAt`。缺少数据的单元格留空。
+
+0.1.7.0 起可选传入 `averageUnitPrice`。用 JSON number 传同次统计的未取整金币单价，C# 类型为 `decimal?`，无样本可传 `null`。旧调用方可省略，均价留空。均价与两个时间一起保存。计算时将本次完整在售中单价最低的 5 条和本次全部成交合并，按每条的单价等权平均。少于 5 条在售时取实际条数。界面显示最多两位小数，接口保存及返回原值。
 
 输入必须是单个对象，最长 2048 字符。拒绝无效物品、未来时间、UnixEpoch 前的默认时间、最早成交晚于统计时间，以及用更旧或缺失的统计时间覆盖已有观测。同一统计时间内容冲突时拒绝，重复的相同快照返回 `true`；更新的统计可以替换旧记录。`AddItemWithSaleStatistics` 先核对全部数据，再一次保存物品和统计，`SetSaleStatistics` 对未登记物品返回 `false`。删除物品或清空清单时一并删除统计，旧 `AddItem` 入口仍可使用。接口版本仍为 `1`，旧插件可能没有这些新端点；调用方应处理 `IpcNotReadyError`，必要时退回旧 `AddItem`，不要因此出售或丢弃物品。
 
-`GetSaleStatistics` 返回 `[{"itemId":5187,"oldestSaleAt":"2026-07-01T08:00:00+00:00","observedAt":"2026-11-19T14:00:00+00:00"}]` 这样的数组，只含已保存的统计；没有条目的物品表示未知。清单内 HQ/NQ 共用一份最近收到的统计，调用方负责当前世界与查询范围的归属。清单的更新按钮通过原生市场布告板读取当前世界的成交历史。回收之王不将“本次读到的最早一笔”当成物品的终身最早成交。
+`GetSaleStatistics` 返回 `[{"itemId":5187,"oldestSaleAt":"2026-07-01T08:00:00+00:00","observedAt":"2026-11-19T14:00:00+00:00","averageUnitPrice":99.625}]` 这样的数组，只含已保存的统计。清单内 HQ/NQ 共用一份最近收到的统计，调用方负责当前世界与查询范围的归属。清单的更新按钮通过原生市场布告板读取当前世界的在售和成交历史。
 
 ```csharp
 using System.Text.Json;
 
 var add = pluginInterface.GetIpcSubscriber<string, Task<bool>>("RecycleKing.AddItemWithSaleStatistics");
-var json = JsonSerializer.Serialize(new { itemId, oldestSaleAt, observedAt });
+var json = JsonSerializer.Serialize(new { itemId, oldestSaleAt, observedAt, averageUnitPrice });
 bool accepted = await add.InvokeFunc(json);
 // 已有条目同样可更新；false 表示本次数据未应用，不能据此判定物品已处理。
 ```
 
-Since 0.1.5.0, `AddItemWithSaleStatistics(string)` and `SetSaleStatistics(string)` return `Task<bool>` and accept `{itemId, oldestSaleAt, observedAt}` JSON. Timestamps are nullable ISO 8601 values with UTC offsets. The first call adds or updates atomically; the second requires an existing list entry. Missing data stays blank. Future, reversed, uninitialized, stale or conflicting observations are rejected. Identical snapshots are idempotent. `GetSaleStatistics()` returns `Task<string>` containing saved records as a JSON array. HQ/NQ share one base-item record; deletion removes its statistics. The update buttons query native market-board history for the current world. Observation times reflect the actual query. API version remains `1`; callers must handle missing endpoints on older versions.
+Since 0.1.7.0, the statistics JSON includes optional `averageUnitPrice` alongside `itemId`, `oldestSaleAt`, and `observedAt`. Submit an unrounded `decimal` as a JSON number, or `null` when there are no samples. Include the five cheapest available listings and every returned sale once, at their unit prices. Omitted or null values display as blank. `AddItemWithSaleStatistics` and `SetSaleStatistics` save one observation, and `GetSaleStatistics` returns its original numeric value. API version `1` and existing endpoint signatures remain available.
 
 使用 `await` 等待接口返回，尤其不要在游戏线程用 `.Result` 或 `.Wait()`。插件未加载时 IPC 可能抛出 `IpcNotReadyError`，卸载期间已排队的调用也可能失败。调用启动接口前应确认调用方自己的触发条件。开始、停止和查询示例：
 

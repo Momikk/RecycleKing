@@ -13,7 +13,8 @@ internal sealed record RecycleRow(uint Id, uint Icon, string Name, SaleStatistic
 internal static class RecycleListColumns
 {
     // KamiToolKit reserves 16 pixels for the list's scroll bar.
-    internal static float DateX(float rowWidth) => rowWidth - 346;
+    internal static float DateX(float rowWidth) => rowWidth - 442;
+    internal static float PriceX(float rowWidth) => rowWidth - 352;
     internal static float DaysX(float rowWidth) => rowWidth - 256;
     internal static float AgeX(float rowWidth) => rowWidth - 190;
     internal static float UpdateX(float rowWidth) => rowWidth - 124;
@@ -99,6 +100,7 @@ internal sealed unsafe class NativeListWindow : NativeAddon
             ("图标", 0f, 40f, null),
             ("物品名称", 44f, RecycleListColumns.DateX(rowWidth) - 50, RecycleSortColumn.Name),
             ("最早售出", RecycleListColumns.DateX(rowWidth), 86f, RecycleSortColumn.OldestSale),
+            ("平均价格", RecycleListColumns.PriceX(rowWidth), 90f, RecycleSortColumn.AverageUnitPrice),
             ("距统计", RecycleListColumns.DaysX(rowWidth), 60f, RecycleSortColumn.DaysAtObservation),
             ("更新距今", RecycleListColumns.AgeX(rowWidth), 60f, RecycleSortColumn.UpdatedDaysAgo),
             ("操作", RecycleListColumns.UpdateX(rowWidth), 118f, null),
@@ -205,6 +207,7 @@ internal sealed unsafe class NativeListWindow : NativeAddon
     {
         RecycleSortColumn.Name => "物品名称",
         RecycleSortColumn.OldestSale => "最早售出",
+        RecycleSortColumn.AverageUnitPrice => "平均价格",
         RecycleSortColumn.DaysAtObservation => "距统计",
         RecycleSortColumn.UpdatedDaysAgo => "更新距今",
         _ => "物品名称",
@@ -306,6 +309,7 @@ internal sealed class RecycleRowNode : ListItemNode<RecycleRow>, IListItemNode
     private readonly IconImageNode icon;
     private readonly TextNode name;
     private readonly TextNode oldestSale;
+    private readonly TextNode averagePrice;
     private readonly TextNode daysAtObservation;
     private readonly TextNode updatedDaysAgo;
     private readonly TextButtonNode update;
@@ -324,6 +328,9 @@ internal sealed class RecycleRowNode : ListItemNode<RecycleRow>, IListItemNode
         };
         name.AttachNode(this);
         oldestSale = AddText(86);
+        averagePrice = AddText(90);
+        averagePrice.AlignmentType = AlignmentType.Right;
+        averagePrice.TextFlags = TextFlags.Ellipsis;
         daysAtObservation = AddText(60);
         updatedDaysAgo = AddText(60);
         update = new TextButtonNode
@@ -350,9 +357,10 @@ internal sealed class RecycleRowNode : ListItemNode<RecycleRow>, IListItemNode
     protected override void OnSizeChanged()
     {
         base.OnSizeChanged();
-        if (name is null || oldestSale is null || daysAtObservation is null || updatedDaysAgo is null || update is null || remove is null) return;
+        if (name is null || oldestSale is null || averagePrice is null || daysAtObservation is null || updatedDaysAgo is null || update is null || remove is null) return;
         name.Size = new(Math.Max(1, RecycleListColumns.DateX(Width) - 50), 36);
         oldestSale.Position = new(RecycleListColumns.DateX(Width), 0);
+        averagePrice.Position = new(RecycleListColumns.PriceX(Width), 0);
         daysAtObservation.Position = new(RecycleListColumns.DaysX(Width), 0);
         updatedDaysAgo.Position = new(RecycleListColumns.AgeX(Width), 0);
         update.Position = new(RecycleListColumns.UpdateX(Width), 4);
@@ -374,6 +382,7 @@ internal sealed class RecycleRowNode : ListItemNode<RecycleRow>, IListItemNode
         icon.IsVisible = row.Icon != 0;
         name.String = row.Name;
         oldestSale.String = row.Statistics.OldestSaleDate;
+        averagePrice.String = row.Statistics.AverageUnitPrice;
         daysAtObservation.String = Days(row.Statistics.DaysAtObservation);
         updatedDaysAgo.String = Days(row.Statistics.UpdatedDaysAgo);
         TextTooltip = row.Name;

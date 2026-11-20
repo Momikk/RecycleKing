@@ -11,7 +11,8 @@ internal sealed class RecycleKingIpc(Plugin plugin) : IDisposable
     {
         RegisterOnFramework("GetItemIds", () => plugin.Config.ItemIds.ToArray());
         RegisterOnFramework("GetSaleStatistics", () => JsonSerializer.Serialize(plugin.Config.SaleStatistics
-            .Select(pair => new { itemId = pair.Key, oldestSaleAt = pair.Value.OldestSaleAt, observedAt = pair.Value.ObservedAt })));
+            .Select(pair => new { itemId = pair.Key, oldestSaleAt = pair.Value.OldestSaleAt, observedAt = pair.Value.ObservedAt,
+                averageUnitPrice = pair.Value.AverageUnitPrice })));
         RegisterOnFramework<string, bool>("SetSaleStatistics", SetSaleStatistics);
         RegisterOnFramework<string, bool>("AddItemWithSaleStatistics", json => ApplySaleStatistics(json, true));
         RegisterOnFramework<uint, bool>("AddItem", plugin.AddItem);

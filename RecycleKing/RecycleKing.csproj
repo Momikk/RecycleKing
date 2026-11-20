@@ -1,6 +1,6 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
   <PropertyGroup>
-    <Version>0.1.6.2</Version>
+    <Version>0.1.7.0</Version>
     <Author>Momikk</Author>
     <Name>回收之王 RecycleKing</Name>
     <RepoUrl>https://github.com/Momikk/RecycleKing</RepoUrl>
@@ -12,7 +12,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <CanUnloadAsync>true</CanUnloadAsync>
-    <Changelog>版本 0.1.6.2&#10;·修复成交历史先于挂牌结果到达时，更新被误判为窗口切换而中断的问题。&#10;English&#10;·Fix updates stopping when sale history arrives before the listing results.</Changelog>
+    <Changelog>版本 0.1.7.0&#10;·清单新增可排序的平均价格，取最低 5 条在售和本次全部成交的单价平均值。&#10;·其他插件可读取或传入平均价格，缺少数据时留空。&#10;English&#10;·Show a sortable average unit price using the five cheapest listings and all sales returned by the query.&#10;·Allow other plugins to read or submit the average price. Missing values stay blank.</Changelog>
     <PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
   </PropertyGroup>
   <ItemGroup>
