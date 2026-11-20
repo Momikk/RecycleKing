@@ -67,11 +67,13 @@ internal sealed unsafe class NativeListWindow : NativeAddon
     public override void Close()
     {
         pendingOpen = false;
+        plugin.MarketRefresh.Stop();
         base.Close();
     }
 
     protected override void OnSetup(AtkUnitBase* addon, Span<AtkValue> values)
     {
+        if (WindowNode is WindowNode titleBar) titleBar.CloseButtonNode.OnClick = Close;
         var origin = ContentStartPosition;
         var width = ContentSize.X;
         hideOverlay = new CheckboxNode
@@ -218,6 +220,7 @@ internal sealed unsafe class NativeListWindow : NativeAddon
     {
         if (clear is null || cancel is null || count is null || refreshAll is null || progress is null) return;
         var running = plugin.MarketRefresh.IsRunning;
+        RespectCloseAll = !running;
         if (running) confirmClear = false;
         SetText(clear.LabelNode, confirmClear ? "确认清空清单" : "清空清单", ref clearText);
         var clearEnabled = !running && plugin.Config.ItemIds.Count > 0;
@@ -244,15 +247,26 @@ internal sealed unsafe class NativeListWindow : NativeAddon
     {
         if (plugin.MarketRefresh.IsRunning) return;
         confirmClear = false;
-        plugin.MarketRefresh.Start(itemId);
-        UpdateControls();
+        StartMarketRefresh(itemId);
     }
 
     private void ToggleRefresh()
     {
         confirmClear = false;
-        if (plugin.MarketRefresh.IsRunning) plugin.MarketRefresh.Stop();
-        else plugin.MarketRefresh.Start(null);
+        if (!plugin.MarketRefresh.IsRunning)
+        {
+            StartMarketRefresh(null);
+            return;
+        }
+        plugin.MarketRefresh.Stop();
+        UpdateControls();
+    }
+
+    private void StartMarketRefresh(uint? itemId)
+    {
+        // Opening ItemSearch can issue Close All before Start returns.
+        RespectCloseAll = false;
+        plugin.MarketRefresh.Start(itemId);
         UpdateControls();
     }
 
@@ -263,7 +277,8 @@ internal sealed unsafe class NativeListWindow : NativeAddon
 
     protected override void OnFinalize(AtkUnitBase* addon)
     {
-        plugin.MarketRefresh.Stop();
+        // The game can release this window while opening the market board.
+        // The query owns the market session independently of the list window.
         list?.Dispose(); list = null;
         heading?.Dispose(); heading = null;
         sortHeaders.Clear();

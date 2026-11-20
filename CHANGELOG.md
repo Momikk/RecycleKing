@@ -2,6 +2,10 @@
 
 [中文更新记录](CHANGELOG.zh-CN.md)
 
+## 0.1.6.1 — 2026-11-21
+
+- Fix opening the market board closing the recycling list and interrupting updates.
+
 ## 0.1.6.0 — 2026-11-21
 
 - Refresh sale statistics for one item or the entire list at a nearby market board.
