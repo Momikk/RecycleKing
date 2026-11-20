@@ -1,15 +1,15 @@
 [
   {
     "DownloadCount": 0,
-    "LastUpdate": 1795102056,
+    "LastUpdate": 1795191748,
     "IsTestingExclusive": false,
-    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/0b513c286cea62b3ccf462f30a2dc642635cef89/dist/RecycleKing-0.1.5.0.zip",
-    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/0b513c286cea62b3ccf462f30a2dc642635cef89/dist/RecycleKing-0.1.5.0.zip",
+    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/d5029fed2d80a2f5dcaedad3d3b187cb181febd4/dist/RecycleKing-0.1.6.0.zip",
+    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/d5029fed2d80a2f5dcaedad3d3b187cb181febd4/dist/RecycleKing-0.1.6.0.zip",
     "IsHide": false,
     "Author": "Momikk",
     "Name": "回收之王 RecycleKing",
     "InternalName": "RecycleKing",
-    "AssemblyVersion": "0.1.5.0",
+    "AssemblyVersion": "0.1.6.0",
     "Description": "使用原生 UI 管理回收清单，支持批量出售、当前标签自动分解，以及未登记套装装备一键出库。",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/Momikk/RecycleKing",
@@ -25,7 +25,7 @@
     "LoadPriority": 0,
     "IconUrl": "https://raw.githubusercontent.com/Momikk/RecycleKing/main/images/icon.png",
     "Punchline": "管理回收清单，在出售界面批量出售背包废品。",
-    "Changelog": "版本 0.1.5.0\n·清单增加最早售出日期、距统计天数和更新距今天数，缺少数据时留空。\n·点击名称、日期或天数表头切换升降序，缺少数据排在最后。\n·“移出清单”改为“删除”，支持其他插件连同物品传入统计。\nEnglish\n·Show the oldest sale date, days at observation and days since update; leave missing data blank.\n·Click name, date or age headers to switch sorting direction; keep missing data last.\n·Shorten the removal button to Delete and accept item statistics from other plugins.",
+    "Changelog": "版本 0.1.6.0\n·靠近市场布告板后，可逐项或批量更新清单的成交统计。\nEnglish\n·Refresh sale statistics for one item or the entire list at a nearby market board.",
     "AcceptsFeedback": true
   }
 ]
