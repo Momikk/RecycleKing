@@ -21,5 +21,6 @@
     <Compile Include="../RecycleKing/SaleHandoff.cs" Link="SaleHandoff.cs" />
     <Compile Include="../RecycleKing/SaleStatistics.cs" Link="SaleStatistics.cs" />
     <Compile Include="../RecycleKing/RecycleSort.cs" Link="RecycleSort.cs" />
+    <Compile Include="../RecycleKing/MarketHistory.cs" Link="MarketHistory.cs" />
   </ItemGroup>
 </Project>

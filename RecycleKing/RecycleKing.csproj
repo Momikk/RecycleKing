@@ -1,6 +1,6 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
   <PropertyGroup>
-    <Version>0.1.5.0</Version>
+    <Version>0.1.6.0</Version>
     <Author>Momikk</Author>
     <Name>回收之王 RecycleKing</Name>
     <RepoUrl>https://github.com/Momikk/RecycleKing</RepoUrl>
@@ -12,7 +12,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <CanUnloadAsync>true</CanUnloadAsync>
-    <Changelog>版本 0.1.5.0&#10;·清单增加最早售出日期、距统计天数和更新距今天数，缺少数据时留空。&#10;·点击名称、日期或天数表头切换升降序，缺少数据排在最后。&#10;·“移出清单”改为“删除”，支持其他插件连同物品传入统计。&#10;English&#10;·Show the oldest sale date, days at observation and days since update; leave missing data blank.&#10;·Click name, date or age headers to switch sorting direction; keep missing data last.&#10;·Shorten the removal button to Delete and accept item statistics from other plugins.</Changelog>
+    <Changelog>版本 0.1.6.0&#10;·靠近市场布告板后，可逐项或批量更新清单的成交统计。&#10;English&#10;·Refresh sale statistics for one item or the entire list at a nearby market board.</Changelog>
     <PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
   </PropertyGroup>
   <ItemGroup>

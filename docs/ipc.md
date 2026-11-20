@@ -36,7 +36,7 @@ Since 0.1.4.3, `batchDesynthesis.outputRows` is an optional integer counting ver
 
 输入必须是单个对象，最长 2048 字符。拒绝无效物品、未来时间、UnixEpoch 前的默认时间、最早成交晚于统计时间，以及用更旧或缺失的统计时间覆盖已有观测。同一统计时间内容冲突时拒绝，重复的相同快照返回 `true`；更新的统计可以替换旧记录。`AddItemWithSaleStatistics` 先核对全部数据，再一次保存物品和统计，`SetSaleStatistics` 对未登记物品返回 `false`。删除物品或清空清单时一并删除统计，旧 `AddItem` 入口仍可使用。接口版本仍为 `1`，旧插件可能没有这些新端点；调用方应处理 `IpcNotReadyError`，必要时退回旧 `AddItem`，不要因此出售或丢弃物品。
 
-`GetSaleStatistics` 返回 `[{"itemId":5187,"oldestSaleAt":"2026-07-01T08:00:00+00:00","observedAt":"2026-11-19T14:00:00+00:00"}]` 这样的数组，只含已保存的统计；没有条目的物品表示未知。清单内 HQ/NQ 共用一份最近收到的统计，调用方负责当前世界与查询范围的归属。本插件不主动联网取历史，也不将“本次读到的最早一笔”当成物品的终身最早成交。
+`GetSaleStatistics` 返回 `[{"itemId":5187,"oldestSaleAt":"2026-07-01T08:00:00+00:00","observedAt":"2026-11-19T14:00:00+00:00"}]` 这样的数组，只含已保存的统计；没有条目的物品表示未知。清单内 HQ/NQ 共用一份最近收到的统计，调用方负责当前世界与查询范围的归属。清单的更新按钮通过原生市场布告板读取当前世界的成交历史。回收之王不将“本次读到的最早一笔”当成物品的终身最早成交。
 
 ```csharp
 using System.Text.Json;
@@ -47,7 +47,7 @@ bool accepted = await add.InvokeFunc(json);
 // 已有条目同样可更新；false 表示本次数据未应用，不能据此判定物品已处理。
 ```
 
-Since 0.1.5.0, `AddItemWithSaleStatistics(string)` and `SetSaleStatistics(string)` return `Task<bool>` and accept `{itemId, oldestSaleAt, observedAt}` JSON. Timestamps are nullable ISO 8601 values with UTC offsets. The first call adds or updates atomically; the second requires an existing list entry. Missing data stays blank. Future, reversed, uninitialized, stale or conflicting observations are rejected. Identical snapshots are idempotent. `GetSaleStatistics()` returns `Task<string>` containing saved records as a JSON array. HQ/NQ share one base-item record; deletion removes its statistics. The provider does not fetch history or invent observation dates. API version remains `1`; callers must handle missing endpoints on older versions.
+Since 0.1.5.0, `AddItemWithSaleStatistics(string)` and `SetSaleStatistics(string)` return `Task<bool>` and accept `{itemId, oldestSaleAt, observedAt}` JSON. Timestamps are nullable ISO 8601 values with UTC offsets. The first call adds or updates atomically; the second requires an existing list entry. Missing data stays blank. Future, reversed, uninitialized, stale or conflicting observations are rejected. Identical snapshots are idempotent. `GetSaleStatistics()` returns `Task<string>` containing saved records as a JSON array. HQ/NQ share one base-item record; deletion removes its statistics. The update buttons query native market-board history for the current world. Observation times reflect the actual query. API version remains `1`; callers must handle missing endpoints on older versions.
 
 使用 `await` 等待接口返回，尤其不要在游戏线程用 `.Result` 或 `.Wait()`。插件未加载时 IPC 可能抛出 `IpcNotReadyError`，卸载期间已排队的调用也可能失败。调用启动接口前应确认调用方自己的触发条件。开始、停止和查询示例：
 

@@ -2,6 +2,10 @@
 
 [中文更新记录](CHANGELOG.zh-CN.md)
 
+## 0.1.6.0 — 2026-11-21
+
+- Refresh sale statistics for one item or the entire list at a nearby market board.
+
 ## 0.1.5.0 — 2026-11-19
 
 - Show the oldest sale date, days at observation and days since update; leave missing data blank.

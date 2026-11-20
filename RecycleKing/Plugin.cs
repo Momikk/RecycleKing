@@ -23,12 +23,15 @@ public sealed class Plugin : IAsyncDalamudPlugin
     [PluginService] internal static IClientState ClientState { get; private set; } = null!;
     [PluginService] internal static IChatGui Chat { get; private set; } = null!;
     [PluginService] internal static IToastGui Toasts { get; private set; } = null!;
+    [PluginService] internal static IObjectTable Objects { get; private set; } = null!;
+    [PluginService] internal static IMarketBoard MarketBoard { get; private set; } = null!;
 
     internal Configuration Config { get; }
     internal int Revision { get; private set; }
     internal BatchSale Sales { get; private set; } = null!;
     internal BatchDesynthesis Desynthesis { get; private set; } = null!;
     internal ArmouryCleanup Armoury { get; private set; } = null!;
+    internal MarketRefresh MarketRefresh { get; private set; } = null!;
     private NativeListWindow? window;
     private InventoryButton? inventoryButton;
     private ExpertDeliveryLevels? deliveryLevels;
@@ -60,11 +63,12 @@ public sealed class Plugin : IAsyncDalamudPlugin
         {
             window = new NativeListWindow(this)
             {
-                InternalName = "RecycleKingList", Title = "回收之王", Size = new(510, 530),
+                InternalName = "RecycleKingList", Title = "回收之王", Size = new(600, 530),
             };
             Sales = new BatchSale(this);
             Desynthesis = new BatchDesynthesis(this);
             Armoury = new ArmouryCleanup(this);
+            MarketRefresh = new MarketRefresh(this);
             inventoryButton = new InventoryButton(this);
             deliveryLevels = new ExpertDeliveryLevels(this);
             overlayHider = new AutoRetainerOverlayHider(this);
@@ -218,6 +222,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
             PluginInterface.UiBuilder.OpenConfigUi -= OpenList;
             foreach (var command in CommandNames) Commands.RemoveHandler(command);
             window?.StopPendingOpen();
+            MarketRefresh?.Dispose();
             Sales?.Dispose();
             Desynthesis?.Dispose();
             Armoury?.Dispose();

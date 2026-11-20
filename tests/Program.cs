@@ -725,6 +725,66 @@ Check(SortedStatisticsIds(new[] { numericStatisticsRows[0] }, RecycleSortColumn.
     "a singleton recycling list remains unchanged when a sort column is toggled");
 Console.WriteLine($"Passed {checks} total checks including pinyin, date, numeric, missing-value and stable recycling-list sorting.");
 
+var historyObservedAt = DateTimeOffset.Parse("2026-11-21T21:45:00+08:00");
+Check(MarketHistory.TrySummarize(5187, 5187, Array.Empty<MarketHistoryLine>(), historyObservedAt, out var emptyMarketHistory)
+    && emptyMarketHistory is { OldestSaleAt: null } && emptyMarketHistory.ObservedAt == historyObservedAt,
+    "a genuine empty response for the requested item retains the supplied observation time and an unknown oldest sale");
+Check(SaleStatisticsDisplay.Format(emptyMarketHistory, historyObservedAt, statisticsZone) == new SaleStatisticsCells("", "", "0"),
+    "an observed empty market history displays no invented sale date or sale age");
+var unorderedMarketHistory = new[]
+{
+    new MarketHistoryLine(historyObservedAt.UtcDateTime.AddDays(-3), 999, 10),
+    new MarketHistoryLine(historyObservedAt.UtcDateTime.AddDays(-120), 2, 40),
+    new MarketHistoryLine(historyObservedAt.UtcDateTime.AddDays(-8), 99, 20),
+};
+var unorderedMarketHistoryBefore = unorderedMarketHistory.ToArray();
+Check(MarketHistory.TrySummarize(5187, 5187, unorderedMarketHistory, historyObservedAt, out var shortMarketHistory)
+    && shortMarketHistory?.OldestSaleAt == historyObservedAt.AddDays(-120)
+    && shortMarketHistory.ObservedAt == historyObservedAt,
+    "a short unsorted history uses the oldest actual transaction across all entries rather than row order or sold quantity");
+Check(unorderedMarketHistory.SequenceEqual(unorderedMarketHistoryBefore),
+    "summarizing market history never changes the caller's entry order");
+var fullMarketHistory = Enumerable.Range(0, 20)
+    .Select(i => new MarketHistoryLine(historyObservedAt.UtcDateTime.AddHours(-i), (uint)(i + 1), (uint)(i + 10)))
+    .Reverse().ToArray();
+Check(MarketHistory.TrySummarize(5187, 5187, fullMarketHistory, historyObservedAt, out var twentyMarketHistory)
+    && twentyMarketHistory?.OldestSaleAt == historyObservedAt.AddHours(-19)
+    && twentyMarketHistory.ObservedAt == historyObservedAt,
+    "all twenty returned transaction rows are accepted even when total sold units exceed twenty");
+Check(!MarketHistory.TrySummarize(5187, 5187, fullMarketHistory.Append(fullMarketHistory[0]).ToArray(), historyObservedAt, out var oversizedMarketHistory)
+    && oversizedMarketHistory == null,
+    "more than twenty transaction rows are rejected without returning a partial oldest date");
+foreach (var historyIds in new[] { (Expected: 5187u, Response: 5188u), (Expected: 0u, Response: 0u), (Expected: 5187u, Response: 0u) })
+{
+    Check(!MarketHistory.TrySummarize(historyIds.Expected, historyIds.Response, unorderedMarketHistory, historyObservedAt, out var wrongItemMarketHistory)
+        && wrongItemMarketHistory == null,
+        "a history response must belong to the correct nonzero requested item before any statistics are accepted");
+}
+Check(!MarketHistory.TrySummarize(5187, 5188, Array.Empty<MarketHistoryLine>(), historyObservedAt, out _),
+    "an empty history for another item cannot erase the requested item's recorded oldest sale");
+var goodHistoryLine = unorderedMarketHistory[0];
+foreach (var invalidHistoryLine in new[]
+{
+    goodHistoryLine with { PurchaseTime = DateTime.SpecifyKind(goodHistoryLine.PurchaseTime, DateTimeKind.Unspecified) },
+    goodHistoryLine with { PurchaseTime = DateTime.SpecifyKind(goodHistoryLine.PurchaseTime, DateTimeKind.Local) },
+    goodHistoryLine with { PurchaseTime = historyObservedAt.UtcDateTime.AddTicks(1) },
+    goodHistoryLine with { PurchaseTime = DateTime.UnixEpoch.AddTicks(-1) },
+    goodHistoryLine with { Quantity = 0 },
+    goodHistoryLine with { Price = 0 },
+})
+{
+    Check(!MarketHistory.TrySummarize(5187, 5187, new[] { goodHistoryLine, invalidHistoryLine, unorderedMarketHistory[1] }, historyObservedAt, out var invalidMarketHistory)
+        && invalidMarketHistory == null,
+        "one non-UTC, future, pre-Unix, zero-quantity or zero-price row rejects the complete response rather than silently filtering it");
+}
+Check(MarketHistory.TrySummarize(5187, 5187, new[] { new MarketHistoryLine(DateTime.UnixEpoch, 1, 1) }, historyObservedAt, out var epochMarketHistory)
+    && epochMarketHistory?.OldestSaleAt == DateTimeOffset.UnixEpoch,
+    "a UTC purchase exactly at the Unix boundary remains valid");
+Check(MarketHistory.TrySummarize(5187, 5187, new[] { goodHistoryLine with { PurchaseTime = historyObservedAt.UtcDateTime } }, historyObservedAt, out var currentMarketHistory)
+    && currentMarketHistory?.OldestSaleAt == historyObservedAt && currentMarketHistory.ObservedAt == historyObservedAt,
+    "a purchase exactly at the supplied observation time is accepted without replacing that timestamp with the current clock");
+Console.WriteLine($"Passed {checks} total checks including bounded native market history and oldest-sale observation.");
+
 sealed class FakeOverlay
 {
     public bool IsOpen { get; set; }

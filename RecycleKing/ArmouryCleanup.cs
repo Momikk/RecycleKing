@@ -99,7 +99,7 @@ internal sealed unsafe class ArmouryCleanup : IDisposable
 
     internal bool TryStart()
     {
-        if (IsRunning) return false;
+        if (IsRunning || plugin.MarketRefresh.IsRunning) return false;
         Begin();
         return IsRunning;
     }

@@ -70,7 +70,7 @@ internal sealed unsafe class BatchSale : IDisposable
 
     internal bool TryStart()
     {
-        if (IsRunning) return false;
+        if (IsRunning || plugin.MarketRefresh.IsRunning) return false;
         Begin();
         return IsRunning;
     }

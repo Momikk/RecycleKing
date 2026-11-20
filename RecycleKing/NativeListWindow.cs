@@ -8,15 +8,16 @@ using Item = Lumina.Excel.Sheets.Item;
 
 namespace RecycleKing;
 
-internal sealed record RecycleRow(uint Id, uint Icon, string Name, SaleStatisticsCells Statistics, Action<uint> Remove);
+internal sealed record RecycleRow(uint Id, uint Icon, string Name, SaleStatisticsCells Statistics, Action<uint> Remove, Action<uint> Update);
 
 internal static class RecycleListColumns
 {
     // KamiToolKit reserves 16 pixels for the list's scroll bar.
-    internal static float DateX(float rowWidth) => rowWidth - 280;
-    internal static float DaysX(float rowWidth) => rowWidth - 190;
-    internal static float AgeX(float rowWidth) => rowWidth - 124;
-    internal static float DeleteX(float rowWidth) => rowWidth - 58;
+    internal static float DateX(float rowWidth) => rowWidth - 346;
+    internal static float DaysX(float rowWidth) => rowWidth - 256;
+    internal static float AgeX(float rowWidth) => rowWidth - 190;
+    internal static float UpdateX(float rowWidth) => rowWidth - 124;
+    internal static float DeleteX(float rowWidth) => rowWidth - 62;
 }
 
 internal sealed unsafe class NativeListWindow : NativeAddon
@@ -27,6 +28,8 @@ internal sealed unsafe class NativeListWindow : NativeAddon
     private ResNode? heading;
     private TextButtonNode? clear;
     private TextButtonNode? cancel;
+    private TextButtonNode? refreshAll;
+    private TextNode? progress;
     private CheckboxNode? hideOverlay;
     private CheckboxNode? highlight;
     private int revision = -1;
@@ -36,6 +39,10 @@ internal sealed unsafe class NativeListWindow : NativeAddon
     private RecycleSortColumn sortColumn = RecycleSortColumn.Name;
     private bool sortDescending;
     private readonly Dictionary<RecycleSortColumn, TextNode> sortHeaders = new();
+    private string? countText;
+    private string? clearText;
+    private string? refreshText;
+    private string? progressText;
 
     internal NativeListWindow(Plugin plugin)
     {
@@ -92,7 +99,7 @@ internal sealed unsafe class NativeListWindow : NativeAddon
             ("最早售出", RecycleListColumns.DateX(rowWidth), 86f, RecycleSortColumn.OldestSale),
             ("距统计", RecycleListColumns.DaysX(rowWidth), 60f, RecycleSortColumn.DaysAtObservation),
             ("更新距今", RecycleListColumns.AgeX(rowWidth), 60f, RecycleSortColumn.UpdatedDaysAgo),
-            ("操作", RecycleListColumns.DeleteX(rowWidth), 52f, null),
+            ("操作", RecycleListColumns.UpdateX(rowWidth), 118f, null),
         })
         {
             var text = new TextNode
@@ -128,6 +135,7 @@ internal sealed unsafe class NativeListWindow : NativeAddon
             Position = origin + new Vector2(0, ContentSize.Y - 32), Size = new(136, 28),
             String = "清空清单", OnClick = () =>
             {
+                if (plugin.MarketRefresh.IsRunning) return;
                 if (confirmClear) { plugin.Clear(); confirmClear = false; }
                 else confirmClear = true;
                 UpdateControls();
@@ -140,6 +148,18 @@ internal sealed unsafe class NativeListWindow : NativeAddon
             String = "取消", IsVisible = false, OnClick = () => { confirmClear = false; UpdateControls(); },
         };
         AddNode(cancel);
+        progress = new TextNode
+        {
+            Position = origin + new Vector2(240, ContentSize.Y - 32), Size = new(Math.Max(1, width - 360), 28),
+            FontSize = 12, AlignmentType = AlignmentType.Left, TextFlags = TextFlags.Ellipsis,
+        };
+        AddNode(progress);
+        refreshAll = new TextButtonNode
+        {
+            Position = origin + new Vector2(width - 112, ContentSize.Y - 32), Size = new(108, 28),
+            String = "更新全部", OnClick = ToggleRefresh,
+        };
+        AddNode(refreshAll);
         revision = -1;
         Refresh();
     }
@@ -148,6 +168,7 @@ internal sealed unsafe class NativeListWindow : NativeAddon
     {
         if (revision != plugin.Revision) { confirmClear = false; Refresh(); }
         else if (!confirmClear && plugin.Config.SaleStatistics.Count > 0 && Environment.TickCount64 >= refreshAgeAfter) Refresh();
+        UpdateControls();
     }
 
     private void Refresh()
@@ -158,8 +179,8 @@ internal sealed unsafe class NativeListWindow : NativeAddon
         var sheet = Plugin.Data.GetExcelSheet<Item>();
         var now = DateTimeOffset.UtcNow;
         list.OptionsList = RecycleSort.Sort(plugin.Config.ItemIds.Select(id => sheet.TryGetRow(id, out var item)
-            ? new RecycleRow(id, item.Icon, item.Name.ExtractText(), Statistics(id), plugin.Remove)
-            : new RecycleRow(id, 0, $"未知物品 #{id}", Statistics(id), plugin.Remove)),
+            ? new RecycleRow(id, item.Icon, item.Name.ExtractText(), Statistics(id), RemoveItem, RefreshItem)
+            : new RecycleRow(id, 0, $"未知物品 #{id}", Statistics(id), RemoveItem, RefreshItem)),
             row => row.Name, row => row.Id, row => plugin.Config.SaleStatistics.GetValueOrDefault(row.Id),
             sortColumn, sortDescending, now);
         SaleStatisticsCells Statistics(uint id) => SaleStatisticsDisplay.Format(plugin.Config.SaleStatistics.GetValueOrDefault(id), now, TimeZoneInfo.Local);
@@ -195,25 +216,66 @@ internal sealed unsafe class NativeListWindow : NativeAddon
 
     private void UpdateControls()
     {
-        if (clear is null || cancel is null || count is null) return;
-        clear.String = confirmClear ? "确认清空清单" : "清空清单";
-        clear.IsEnabled = plugin.Config.ItemIds.Count > 0;
-        cancel.IsVisible = confirmClear;
+        if (clear is null || cancel is null || count is null || refreshAll is null || progress is null) return;
+        var running = plugin.MarketRefresh.IsRunning;
+        if (running) confirmClear = false;
+        SetText(clear.LabelNode, confirmClear ? "确认清空清单" : "清空清单", ref clearText);
+        var clearEnabled = !running && plugin.Config.ItemIds.Count > 0;
+        if (clear.IsEnabled != clearEnabled) clear.IsEnabled = clearEnabled;
+        if (cancel.IsVisible != confirmClear) cancel.IsVisible = confirmClear;
         var order = (sortColumn == RecycleSortColumn.Name ? "拼音" : SortLabel(sortColumn)) + (sortDescending ? "降序" : "升序");
-        count.String = confirmClear ? "再次点击确认清空，仅移除清单记录。" : $"共 {plugin.Config.ItemIds.Count} 种物品 · {order} · HQ/NQ 合并";
+        SetText(count, confirmClear ? "再次点击确认清空，仅移除清单记录。" : $"共 {plugin.Config.ItemIds.Count} 种物品 · {order} · HQ/NQ 合并", ref countText);
+        SetText(refreshAll.LabelNode, running ? "停止更新" : "更新全部", ref refreshText);
+        var refreshEnabled = running || plugin.Config.ItemIds.Count > 0;
+        if (refreshAll.IsEnabled != refreshEnabled) refreshAll.IsEnabled = refreshEnabled;
+        SetText(progress, plugin.MarketRefresh.Status, ref progressText);
+        if (list is not null)
+            foreach (var row in list.OptionNodes) row.SetUpdating(running);
+    }
+
+    private static void SetText(TextNode node, string text, ref string? previous)
+    {
+        if (previous == text) return;
+        node.String = text;
+        previous = text;
+    }
+
+    private void RefreshItem(uint itemId)
+    {
+        if (plugin.MarketRefresh.IsRunning) return;
+        confirmClear = false;
+        plugin.MarketRefresh.Start(itemId);
+        UpdateControls();
+    }
+
+    private void ToggleRefresh()
+    {
+        confirmClear = false;
+        if (plugin.MarketRefresh.IsRunning) plugin.MarketRefresh.Stop();
+        else plugin.MarketRefresh.Start(null);
+        UpdateControls();
+    }
+
+    private void RemoveItem(uint itemId)
+    {
+        if (!plugin.MarketRefresh.IsRunning) plugin.Remove(itemId);
     }
 
     protected override void OnFinalize(AtkUnitBase* addon)
     {
+        plugin.MarketRefresh.Stop();
         list?.Dispose(); list = null;
         heading?.Dispose(); heading = null;
         sortHeaders.Clear();
         count?.Dispose(); count = null;
         clear?.Dispose(); clear = null;
         cancel?.Dispose(); cancel = null;
+        refreshAll?.Dispose(); refreshAll = null;
+        progress?.Dispose(); progress = null;
         hideOverlay?.Dispose(); hideOverlay = null;
         highlight?.Dispose(); highlight = null;
         confirmClear = false;
+        countText = clearText = refreshText = progressText = null;
     }
 
     internal void StopPendingOpen()
@@ -231,8 +293,10 @@ internal sealed class RecycleRowNode : ListItemNode<RecycleRow>, IListItemNode
     private readonly TextNode oldestSale;
     private readonly TextNode daysAtObservation;
     private readonly TextNode updatedDaysAgo;
+    private readonly TextButtonNode update;
     private readonly TextButtonNode remove;
     private RecycleRow? current;
+    private bool? updating;
 
     public RecycleRowNode()
     {
@@ -247,9 +311,15 @@ internal sealed class RecycleRowNode : ListItemNode<RecycleRow>, IListItemNode
         oldestSale = AddText(86);
         daysAtObservation = AddText(60);
         updatedDaysAgo = AddText(60);
+        update = new TextButtonNode
+        {
+            String = "更新", Size = new(56, 28),
+            OnClick = () => { var row = current; row?.Update(row.Id); },
+        };
+        update.AttachNode(this);
         remove = new TextButtonNode
         {
-            String = "删除", Size = new(52, 28),
+            String = "删除", Size = new(56, 28),
             OnClick = () => { var row = current; row?.Remove(row.Id); },
         };
         remove.AttachNode(this);
@@ -265,12 +335,21 @@ internal sealed class RecycleRowNode : ListItemNode<RecycleRow>, IListItemNode
     protected override void OnSizeChanged()
     {
         base.OnSizeChanged();
-        if (name is null || oldestSale is null || daysAtObservation is null || updatedDaysAgo is null || remove is null) return;
+        if (name is null || oldestSale is null || daysAtObservation is null || updatedDaysAgo is null || update is null || remove is null) return;
         name.Size = new(Math.Max(1, RecycleListColumns.DateX(Width) - 50), 36);
         oldestSale.Position = new(RecycleListColumns.DateX(Width), 0);
         daysAtObservation.Position = new(RecycleListColumns.DaysX(Width), 0);
         updatedDaysAgo.Position = new(RecycleListColumns.AgeX(Width), 0);
+        update.Position = new(RecycleListColumns.UpdateX(Width), 4);
         remove.Position = new(RecycleListColumns.DeleteX(Width), 4);
+    }
+
+    internal void SetUpdating(bool value)
+    {
+        if (updating == value) return;
+        updating = value;
+        update.IsEnabled = !value;
+        remove.IsEnabled = !value;
     }
 
     protected override void SetNodeData(RecycleRow row)
