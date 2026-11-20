@@ -1,15 +1,15 @@
 [
   {
     "DownloadCount": 0,
-    "LastUpdate": 1795193050,
+    "LastUpdate": 1795193460,
     "IsTestingExclusive": false,
-    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/bf1cc89e8a89c9f9050d1f784594071bbfb94a91/dist/RecycleKing-0.1.6.1.zip",
-    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/bf1cc89e8a89c9f9050d1f784594071bbfb94a91/dist/RecycleKing-0.1.6.1.zip",
+    "DownloadLinkInstall": "https://raw.githubusercontent.com/Momikk/RecycleKing/bc8e4b404b64588fa787d03869a11995ac24b84e/dist/RecycleKing-0.1.6.2.zip",
+    "DownloadLinkUpdate": "https://raw.githubusercontent.com/Momikk/RecycleKing/bc8e4b404b64588fa787d03869a11995ac24b84e/dist/RecycleKing-0.1.6.2.zip",
     "IsHide": false,
     "Author": "Momikk",
     "Name": "回收之王 RecycleKing",
     "InternalName": "RecycleKing",
-    "AssemblyVersion": "0.1.6.1",
+    "AssemblyVersion": "0.1.6.2",
     "Description": "使用原生 UI 管理回收清单，支持批量出售、当前标签自动分解，以及未登记套装装备一键出库。",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/Momikk/RecycleKing",
@@ -25,7 +25,7 @@
     "LoadPriority": 0,
     "IconUrl": "https://raw.githubusercontent.com/Momikk/RecycleKing/main/images/icon.png",
     "Punchline": "管理回收清单，在出售界面批量出售背包废品。",
-    "Changelog": "版本 0.1.6.1\n·修复打开市场布告板时清单关闭、更新提前中断的问题。\nEnglish\n·Fix opening the market board closing the recycling list and interrupting updates.",
+    "Changelog": "版本 0.1.6.2\n·修复成交历史先于挂牌结果到达时，更新被误判为窗口切换而中断的问题。\nEnglish\n·Fix updates stopping when sale history arrives before the listing results.",
     "AcceptsFeedback": true
   }
 ]
