@@ -1,6 +1,6 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
   <PropertyGroup>
-    <Version>0.1.6.1</Version>
+    <Version>0.1.6.2</Version>
     <Author>Momikk</Author>
     <Name>回收之王 RecycleKing</Name>
     <RepoUrl>https://github.com/Momikk/RecycleKing</RepoUrl>
@@ -12,7 +12,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <CanUnloadAsync>true</CanUnloadAsync>
-    <Changelog>版本 0.1.6.1&#10;·修复打开市场布告板时清单关闭、更新提前中断的问题。&#10;English&#10;·Fix opening the market board closing the recycling list and interrupting updates.</Changelog>
+    <Changelog>版本 0.1.6.2&#10;·修复成交历史先于挂牌结果到达时，更新被误判为窗口切换而中断的问题。&#10;English&#10;·Fix updates stopping when sale history arrives before the listing results.</Changelog>
     <PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
   </PropertyGroup>
   <ItemGroup>

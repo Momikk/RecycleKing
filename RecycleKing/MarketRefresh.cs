@@ -41,7 +41,7 @@ internal sealed unsafe class MarketRefresh : IDisposable
     private WindowKey boardWindow;
     private WindowKey resultWindow;
     private WindowKey historyWindow;
-    private byte resultRequestId;
+    private byte requestIdAtResultOpen;
     private long deadline;
     private long earliestStep;
     private long reopenAfter;
@@ -225,13 +225,13 @@ internal sealed unsafe class MarketRefresh : IDisposable
                     if (history == default) return;
                     if (!BelongsTo(history, board.Id, result.Id)) { Finish("成交历史窗口归属不符，已停止。"); return; }
                     historyWindow = history;
-                    resultRequestId = proxy->CurrentRequestId;
+                    requestIdAtResultOpen = proxy->CurrentRequestId;
                     SetPhase(Phase.ReadingHistory, 125);
                     break;
                 }
                 var button = ((AddonItemSearchResult*)result.Address)->History;
                 if (button == null || button->AtkResNode == null || !button->IsEnabled || !button->AtkResNode->IsVisible()) return;
-                resultRequestId = proxy->CurrentRequestId;
+                requestIdAtResultOpen = proxy->CurrentRequestId;
                 SetPhase(Phase.ReadingHistory, 125);
                 var arg = new AtkValue { Type = AtkValueType.Int, Int = 0 };
                 ((AtkUnitBase*)result.Address)->FireCallback(1, &arg, true);
@@ -239,7 +239,7 @@ internal sealed unsafe class MarketRefresh : IDisposable
                 break;
 
             case Phase.ReadingHistory:
-                if (!OwnResult(result, board, agent, proxy, itemId)) { Finish("本次挂牌窗口已关闭或切换，已停止。"); return; }
+                if (!VerifyOwnedResult(result, board, agent, proxy, itemId)) return;
                 if (history == default)
                 {
                     if (historyWindow != default) Finish("本次成交历史已关闭，已停止。");
@@ -256,7 +256,7 @@ internal sealed unsafe class MarketRefresh : IDisposable
                 if (data == null) return;
                 var saved = plugin.SetSaleStatistics(new(itemId, data.OldestSaleAt, data.ObservedAt));
                 if (saved) updated++; else skipped++;
-                trace.Info("收到成交历史", $"item={itemId} rows={countReceived} saved={saved} oldest={data.OldestSaleAt:O}");
+                trace.Info("收到成交历史", $"item={itemId} rows={countReceived} saved={saved} oldest={data.OldestSaleAt:O} requestAtOpen={requestIdAtResultOpen} requestNow={proxy->CurrentRequestId}");
                 Disarm();
                 SetPhase(Phase.ClosingHistory);
                 ((AtkUnitBase*)history.Address)->Close(true);
@@ -268,7 +268,7 @@ internal sealed unsafe class MarketRefresh : IDisposable
                     if (history != default && history != historyWindow) Finish("成交历史窗口已切换，已停止。");
                     return;
                 }
-                if (!OwnResult(result, board, agent, proxy, itemId)) { Finish("本次挂牌窗口已关闭或切换，已停止。"); return; }
+                if (!VerifyOwnedResult(result, board, agent, proxy, itemId)) return;
                 SetPhase(Phase.ClosingResult);
                 ((AtkUnitBase*)result.Address)->Close(true);
                 break;
@@ -297,9 +297,16 @@ internal sealed unsafe class MarketRefresh : IDisposable
         return row;
     }
 
-    private bool OwnResult(WindowKey result, WindowKey board, AgentItemSearch* agent, InfoProxyItemSearch* proxy, uint itemId)
-        => result != default && result == resultWindow && proxy->CurrentRequestId == resultRequestId
-            && MatchesResult(result, board, agent, proxy, itemId);
+    private bool VerifyOwnedResult(WindowKey result, WindowKey board, AgentItemSearch* agent, InfoProxyItemSearch* proxy, uint itemId)
+    {
+        if (result == default && Visible(Result)) return false; // Wait for a visible window to become ready again.
+        // The listings page can assign its request ID after this item's history has arrived.
+        // Use the owned window and target item instead of the provisional listings request ID.
+        if (result != default && result == resultWindow && MatchesResult(result, board, agent, proxy, itemId)) return true;
+        trace.Warning("挂牌窗口归属不符", $"item={itemId} expectedWindow={resultWindow.Id} actualWindow={result.Id} agentItem={agent->ResultItemId} proxyItem={proxy->SearchItemId} requestAtOpen={requestIdAtResultOpen} requestNow={proxy->CurrentRequestId}");
+        Finish("本次挂牌窗口已关闭或切换，已停止。");
+        return false;
+    }
 
     private static bool MatchesResult(WindowKey result, WindowKey board, AgentItemSearch* agent, InfoProxyItemSearch* proxy, uint itemId)
     {

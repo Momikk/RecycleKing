@@ -2,6 +2,10 @@
 
 [中文更新记录](CHANGELOG.zh-CN.md)
 
+## 0.1.6.2 — 2026-11-21
+
+- Fix updates stopping when sale history arrives before the listing results.
+
 ## 0.1.6.1 — 2026-11-21
 
 - Fix opening the market board closing the recycling list and interrupting updates.
